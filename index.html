@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Approx FiO₂ Estimator</title>
+  <style>
+    :root { --bg:#0b1220; --card:#111b2e; --muted:#9fb0d0; --text:#e9f0ff; --accent:#5cc8ff; --warn:#ffcf5c; }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1200px 700px at 20% 10%, #14244a 0%, var(--bg) 60%);
+      color:var(--text); line-height:1.4;
+    }
+    .wrap{max-width:980px; margin:0 auto; padding:22px}
+    h1{font-size:1.35rem; margin:0 0 10px}
+    p{margin:8px 0; color:var(--muted)}
+    .grid{display:grid; grid-template-columns: 1.2fr 1fr; gap:14px; margin-top:14px}
+    @media (max-width: 860px){ .grid{grid-template-columns:1fr} }
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:16px; padding:16px;
+      box-shadow: 0 10px 35px rgba(0,0,0,.25);
+      backdrop-filter: blur(6px);
+    }
+    label{display:block; font-weight:600; margin:10px 0 6px}
+    select, input{
+      width:100%; padding:11px 12px; border-radius:12px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(10,16,30,.65);
+      color:var(--text);
+      outline:none;
+    }
+    input::placeholder{color:#93a7cc}
+    .row{display:grid; grid-template-columns: 1fr 1fr; gap:12px}
+    @media (max-width:520px){ .row{grid-template-columns:1fr} }
+    .result{
+      display:flex; flex-direction:column; gap:8px;
+      padding:14px; border-radius:14px;
+      background: rgba(92,200,255,.10);
+      border:1px solid rgba(92,200,255,.25);
+      margin-top:12px;
+    }
+    .big{font-size:2rem; font-weight:800; letter-spacing:.2px}
+    .sub{color:var(--muted)}
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:7px 10px; border-radius:999px; font-size:.9rem;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.20);
+      color:var(--text);
+    }
+    .hint{margin-top:10px; font-size:.95rem}
+    .warn{color:var(--warn)}
+    table{width:100%; border-collapse:collapse; margin-top:10px; font-size:.95rem}
+    th,td{padding:10px 8px; border-bottom:1px solid rgba(255,255,255,.10); text-align:left; vertical-align:top}
+    th{color:#cfe0ff}
+    .btn{
+      cursor:pointer; border:none; border-radius:12px;
+      padding:10px 12px; font-weight:700;
+      color:#062033; background: linear-gradient(180deg, #76d7ff, #46bfff);
+    }
+    .btn:active{transform: translateY(1px)}
+    .footer{margin-top:14px; font-size:.92rem; color:var(--muted)}
+    .mono{font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Approx FiO₂ Estimator (mask/device + flow)</h1>
+    <p>
+      This estimates <strong>approximate FiO₂</strong> from common oxygen devices.
+      Reality varies with mask fit, patient minute ventilation, mouth breathing, and entrainment.
+      Use clinically appropriate guidance and your local protocols.
+    </p>
+
+    <div class="grid">
+      <div class="card">
+        <div class="row">
+          <div>
+            <label for="device">Device</label>
+            <select id="device">
+              <option value="room">Room air (no O₂)</option>
+              <option value="nc">Nasal cannula</option>
+              <option value="simple">Simple face mask</option>
+              <option value="partial">Partial rebreather</option>
+              <option value="nrb">Non-rebreather (NRB)</option>
+              <option value="venturi">Venturi mask (fixed %)</option>
+            </select>
+          </div>
+          <div>
+            <label for="flow">Flow (L/min)</label>
+            <input id="flow" type="number" inputmode="decimal" min="0" step="0.5" placeholder="e.g., 4" />
+          </div>
+        </div>
+
+        <div id="venturiExtras" style="display:none; margin-top:6px">
+          <label for="venturiPct">Venturi adapter setting</label>
+          <select id="venturiPct">
+            <option value="24">24%</option>
+            <option value="28">28%</option>
+            <option value="31">31%</option>
+            <option value="35">35%</option>
+            <option value="40">40%</option>
+            <option value="50">50%</option>
+          </select>
+          <p class="hint">
+            Venturi FiO₂ is set by the adapter; flow affects total output, not the set percentage.
+            Ensure you meet the adapter’s minimum flow.
+          </p>
+        </div>
+
+        <div class="result" aria-live="polite">
+          <div class="pill">
+            <span>Estimated FiO₂</span>
+            <span id="quality" class="mono" style="opacity:.9"></span>
+          </div>
+          <div class="big mono" id="fio2Text">0.21</div>
+          <div class="sub" id="fio2Pct">≈ 21%</div>
+          <div class="row" style="align-items:center">
+            <div class="sub" id="rangeText"></div>
+            <div style="text-align:right">
+              <button class="btn" id="copyBtn" type="button">Copy</button>
+            </div>
+          </div>
+        </div>
+
+        <p class="hint warn" id="safetyNote"></p>
+      </div>
+
+      <div class="card">
+        <div class="pill">Typical textbook ranges (very approximate)</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Device</th>
+              <th>Flow</th>
+              <th>Typical FiO₂ range</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Nasal cannula</td>
+              <td>1–6 L/min</td>
+              <td>~24–44% (often taught “+4% per L”)</td>
+            </tr>
+            <tr>
+              <td>Simple face mask</td>
+              <td>5–10 L/min</td>
+              <td>~35–60% <span class="warn">(avoid &lt;5 L/min)</span></td>
+            </tr>
+            <tr>
+              <td>Partial rebreather</td>
+              <td>6–10 L/min</td>
+              <td>~40–70% (depends heavily on bag inflation &amp; seal)</td>
+            </tr>
+            <tr>
+              <td>Non-rebreather</td>
+              <td>10–15 L/min</td>
+              <td>~60–90% (sometimes quoted up to ~95% with good seal)</td>
+            </tr>
+            <tr>
+              <td>Venturi mask</td>
+              <td>Per adapter</td>
+              <td>Fixed: 24/28/31/35/40/50%</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="footer">
+          Assumption check: “device + flow = FiO₂” is only loosely true for variable-performance devices (most masks).
+          If you need a reliable delivered FiO₂, you generally need a fixed-performance system (e.g., Venturi) or a closed system.
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const deviceEl = document.getElementById('device');
+  const flowEl = document.getElementById('flow');
+  const venturiExtras = document.getElementById('venturiExtras');
+  const venturiPctEl = document.getElementById('venturiPct');
+
+  const fio2Text = document.getElementById('fio2Text');
+  const fio2Pct = document.getElementById('fio2Pct');
+  const rangeText = document.getElementById('rangeText');
+  const safetyNote = document.getElementById('safetyNote');
+  const quality = document.getElementById('quality');
+  const copyBtn = document.getElementById('copyBtn');
+
+  function clamp(x, lo, hi){ return Math.min(hi, Math.max(lo, x)); }
+
+  function lerp(x, x0, x1, y0, y1){
+    if (x1 === x0) return y0;
+    const t = (x - x0) / (x1 - x0);
+    return y0 + t * (y1 - y0);
+  }
+
+  function formatFiO2(f){
+    // show fraction with 2 decimals (0.21) and percent (~21%)
+    const frac = clamp(f, 0.21, 1.00);
+    const pct = Math.round(frac * 100);
+    fio2Text.textContent = frac.toFixed(2);
+    fio2Pct.textContent = `≈ ${pct}%`;
+  }
+
+  function setNotes({range="", warn="", q=""}){
+    rangeText.textContent = range;
+    safetyNote.textContent = warn;
+    quality.textContent = q ? `(${q})` : "";
+  }
+
+  function estimate(){
+    const device = deviceEl.value;
+    const flowRaw = parseFloat(flowEl.value);
+    const hasFlow = Number.isFinite(flowRaw);
+    const flow = hasFlow ? flowRaw : 0;
+
+    venturiExtras.style.display = (device === "venturi") ? "block" : "none";
+
+    // Defaults
+    let fio2 = 0.21;
+    let range = "";
+    let warn = "";
+    let q = "low confidence";
+
+    if (device === "room"){
+      fio2 = 0.209;
+      range = "Room air baseline (sea level).";
+      q = "baseline";
+    }
+
+    if (device === "nc"){
+      // Classic teaching: 1 L ~24%, +4% per L up to 6 L (44%).
+      if (!hasFlow){
+        fio2 = 0.28;
+        range = "Enter a flow (typical 1–6 L/min).";
+        warn = "Delivered FiO₂ varies a lot with mouth breathing and minute ventilation.";
+      } else {
+        const f = clamp(flow, 0, 6);
+        const pct = (flow <= 0) ? 21 : clamp(20.9 + 4 * f, 21, 44);
+        fio2 = pct / 100;
+        range = "Typical: 1–6 L/min → ~24–44%.";
+        warn = (flow > 6) ? "Flows >6 L/min usually require a different device (and FiO₂ is still variable)." : "";
+        q = "variable device";
+      }
+    }
+
+    if (device === "simple"){
+      // Simple mask: use a linear approximation 5 L=35%, 10 L=60%
+      if (!hasFlow){
+        fio2 = 0.40;
+        range = "Typical: 5–10 L/min → ~35–60%.";
+        warn = "Avoid <5 L/min on a simple mask (CO₂ rebreathing risk).";
+      } else {
+        const f = clamp(flow, 0, 15);
+        if (flow < 5 && flow > 0) warn = "Avoid <5 L/min on a simple mask (CO₂ rebreathing risk).";
+        const pct = (flow <= 0) ? 21 : clamp(lerp(f, 5, 10, 35, 60), 21, 60);
+        fio2 = pct / 100;
+        range = "Approx model: 5 L≈35%, 10 L≈60% (variable).";
+        q = "very variable";
+      }
+    }
+
+    if (device === "partial"){
+      // Partial rebreather: rough 6 L=40%, 10 L=70%
+      if (!hasFlow){
+        fio2 = 0.50;
+        range = "Typical: 6–10 L/min → ~40–70%.";
+        warn = "Keep the reservoir bag partially inflated throughout inspiration.";
+      } else {
+        const f = clamp(flow, 0, 15);
+        const pct = (flow <= 0) ? 21 : clamp(lerp(f, 6, 10, 40, 70), 21, 75);
+        fio2 = pct / 100;
+        range = "Approx model: 6 L≈40%, 10 L≈70% (depends on seal & bag).";
+        warn = "If the bag collapses on inspiration, increase flow and check fit.";
+        q = "very variable";
+      }
+    }
+
+    if (device === "nrb"){
+      // NRB: rough 10 L=60%, 15 L=90%, cap 95%.
+      if (!hasFlow){
+        fio2 = 0.80;
+        range = "Typical: 10–15 L/min → ~60–90% (sometimes quoted up to ~95%).";
+        warn = "Ensure one-way valves function and reservoir bag stays inflated.";
+      } else {
+        const f = clamp(flow, 0, 25);
+        const pct = (flow <= 0) ? 21 : clamp(lerp(f, 10, 15, 60, 90), 21, 95);
+        fio2 = pct / 100;
+        range = "Approx model: 10 L≈60%, 15 L≈90% (seal & valve dependent).";
+        warn = (flow < 10 && flow > 0) ? "NRB usually needs ~10–15 L/min to be effective." : "Check seal and reservoir inflation.";
+        q = "variable, but higher potential";
+      }
+    }
+
+    if (device === "venturi"){
+      const pct = parseInt(venturiPctEl.value, 10);
+      fio2 = clamp(pct / 100, 0.21, 1.0);
+      range = `Fixed performance: set to ${pct}% (if correct adapter & adequate flow).`;
+      warn = "If the patient’s inspiratory demand exceeds total output, delivered FiO₂ can drop.";
+      q = "higher reliability";
+    }
+
+    formatFiO2(fio2);
+    setNotes({range, warn, q});
+  }
+
+  copyBtn.addEventListener('click', async () => {
+    const text = `Estimated FiO2: ${fio2Text.textContent} (${fio2Pct.textContent.replace('≈ ','')})`;
+    try{
+      await navigator.clipboard.writeText(text);
+      copyBtn.textContent = "Copied!";
+      setTimeout(()=>copyBtn.textContent="Copy", 900);
+    }catch(e){
+      alert("Copy failed. You can select and copy the result manually.");
+    }
+  });
+
+  deviceEl.addEventListener('change', estimate);
+  flowEl.addEventListener('input', estimate);
+  venturiPctEl.addEventListener('change', estimate);
+
+  // sensible defaults
+  flowEl.value = "4";
+  estimate();
+</script>
+</body>
+</html>
