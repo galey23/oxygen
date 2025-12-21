@@ -1,836 +1,967 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>ABG + O₂ → Interpretation + NIV Suggestions + Trend/VQ</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ABG & NIV Helper</title>
   <style>
-    /* Apple-like liquid glass aesthetic */
+    /* Liquid glass theme (Apple-inspired) */
     :root {
-      --bg0:#06070b;
-      --bg1:#070914;
+      --bg-start: #06070b;
+      --bg-end: #070914;
       --glass: rgba(255,255,255,.08);
-      --glass2: rgba(255,255,255,.06);
       --stroke: rgba(255,255,255,.16);
-      --stroke2: rgba(255,255,255,.10);
       --text: rgba(255,255,255,.92);
       --muted: rgba(255,255,255,.68);
       --faint: rgba(255,255,255,.50);
       --accent: rgba(110,198,255,.95);
-      --accent2: rgba(170,120,255,.85);
       --good: rgba(116,255,192,.95);
       --warn: rgba(255,210,125,.95);
       --bad: rgba(255,110,110,.95);
       --radius: 22px;
       --radius2: 16px;
-      --pad: 16px;
-      --pad2: 12px;
+      --shadow: 0 18px 60px rgba(0,0,0,.55);
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
       --sans: ui-sans-serif, system-ui, -apple-system, "SF Pro Display", "SF Pro Text", Segoe UI, Roboto, Helvetica, Arial, sans-serif;
     }
-    *{box-sizing:border-box}
+    * { box-sizing: border-box; }
     body {
-      margin:0;
+      margin: 0;
       font-family: var(--sans);
       color: var(--text);
       background:
         radial-gradient(1200px 700px at 10% 5%, rgba(110,198,255,.18), transparent 55%),
         radial-gradient(1000px 650px at 90% 12%, rgba(170,120,255,.16), transparent 55%),
         radial-gradient(900px 600px at 20% 90%, rgba(116,255,192,.12), transparent 55%),
-        linear-gradient(180deg, var(--bg1), var(--bg0));
-      min-height:100vh;
+        linear-gradient(180deg, var(--bg-end), var(--bg-start));
     }
-    .wrap{max-width:1180px;margin:0 auto;padding:22px;}
-    .topbar{
-      position:sticky;top:0;z-index:20;padding:14px 0 10px;
-      backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
-      background:linear-gradient(180deg,rgba(6,7,11,.85),rgba(6,7,11,.35));
-      border-bottom:1px solid rgba(255,255,255,.08);
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: linear-gradient(180deg, rgba(6,7,11,.85), rgba(6,7,11,.35));
+      backdrop-filter: blur(18px);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      padding: 16px 0 12px;
     }
-    .titleRow{display:flex;gap:14px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;}
-    h1{margin:0;font-size:18px;letter-spacing:.2px;}
-    .sub{margin:6px 0 0;color:var(--muted);font-size:12px;}
-    .badgeRow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
-    .pill{
-      display:inline-flex;align-items:center;gap:8px;
-      padding:7px 10px;border-radius:999px;
-      border:1px solid var(--stroke2);
-      background:rgba(255,255,255,.06);
-      box-shadow:0 8px 22px rgba(0,0,0,.22);
-      font-size:12px;
-      color:var(--text);
+    h1 {
+      margin: 0;
+      font-size: 1rem;
     }
-    .dot{width:8px;height:8px;border-radius:99px;background:var(--accent);}
-    .dot.good{background:var(--good);}
-    .dot.warn{background:var(--warn);}
-    .dot.bad{background:var(--bad);}
-    .tabs{
-      display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;
+    .subheading {
+      color: var(--muted);
+      font-size: .75rem;
+      margin-top: 4px;
     }
-    .tab{
-      cursor:pointer;user-select:none;
-      padding:10px 12px;border-radius:999px;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(255,255,255,.06);
-      color:var(--text);
-      font-weight:650;
-      box-shadow:0 10px 26px rgba(0,0,0,.35);
-      transition:transform .15s ease,background .2s ease,border-color .2s ease;
+    .wrap { max-width: 1160px; margin: 0 auto; padding: 22px; }
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+      flex-wrap: wrap;
     }
-    .tab:hover{transform:translateY(-1px);}
-    .tab.active{
-      background:linear-gradient(180deg,rgba(110,198,255,.18),rgba(255,255,255,.06));
-      border-color:rgba(110,198,255,.35);
+    .tab {
+      cursor: pointer;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.14);
+      color: var(--text);
+      font-weight: 600;
+      box-shadow: 0 8px 20px rgba(0,0,0,.25);
+      transition: transform .15s ease, background .2s ease;
     }
-    .grid{display:grid;grid-template-columns:1.15fr 1fr;gap:14px;margin-top:14px;}
-    @media (max-width:980px){.grid{grid-template-columns:1fr;}.topbar{position:static;}}
-    .card{
-      border-radius:var(--radius);
-      border:1px solid var(--stroke2);
-      background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.05));
-      box-shadow:0 18px 60px rgba(0,0,0,.55);
-      backdrop-filter:blur(18px);
-      -webkit-backdrop-filter:blur(18px);
-      padding:var(--pad);
-      overflow:hidden;
-      position:relative;
+    .tab:hover { transform: translateY(-1px); }
+    .tab.active {
+      background: linear-gradient(180deg, rgba(110,198,255,.20), rgba(255,255,255,.06));
+      border-color: rgba(110,198,255,.35);
     }
-    .card:before{
-      content:"";
-      position:absolute;inset:-1px;
-      border-radius:var(--radius);
-      background:radial-gradient(900px 220px at 20% 0%,rgba(255,255,255,.12),transparent 60%);
-      pointer-events:none;
-      mix-blend-mode:screen;
-      opacity:.9;
+    .content { margin-top: 20px; }
+    .panel {
+      background: rgba(0,0,0,.22);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 18px 40px rgba(0,0,0,.4);
+      margin-bottom: 20px;
     }
-    .card h2{margin:0 0 10px;font-size:14px;color:rgba(255,255,255,.90);letter-spacing:.2px;}
-    .muted{color:var(--muted);font-size:12px;line-height:1.45;}
-    .small{color:var(--faint);font-size:11px;line-height:1.45;}
-    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-    .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
-    @media (max-width:680px){.row,.row3{grid-template-columns:1fr;}}
-    label{display:block;margin:10px 0 6px;font-size:12px;color:rgba(255,255,255,.78);}
-    input,select,textarea{
-      width:100%;
-      padding:11px 12px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(0,0,0,.22);
-      color:var(--text);
-      outline:none;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+    .panel h2 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+      font-weight: 600;
     }
-    textarea{min-height:74px;resize:vertical;}
-    input::placeholder,textarea::placeholder{color:rgba(255,255,255,.35);}
-    .btnRow{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;}
-    button{
-      border:1px solid rgba(255,255,255,.14);
-      background:linear-gradient(180deg,rgba(110,198,255,.85),rgba(110,198,255,.55));
-      color:rgba(0,0,0,.86);
-      font-weight:800;
-      padding:10px 12px;
-      border-radius:14px;
-      cursor:pointer;
-      box-shadow:0 14px 34px rgba(110,198,255,.18), 0 10px 26px rgba(0,0,0,.35);
-      transition:transform .15s ease,filter .2s ease;
+    label {
+      display: block;
+      margin: 8px 0 4px;
+      font-size: .8rem;
     }
-    button:hover{transform:translateY(-1px);filter:brightness(1.02);}
-    button:active{transform:translateY(0);filter:brightness(.98);}
-    button.secondary{
-      background:rgba(255,255,255,.08);
-      color:var(--text);
-      border-color:rgba(255,255,255,.14);
-      box-shadow:0 10px 26px rgba(0,0,0,.35);
+    input, select, textarea {
+      width: 100%;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.20);
+      color: var(--text);
     }
-    button.danger{
-      background:linear-gradient(180deg,rgba(255,110,110,.95),rgba(255,110,110,.55));
-      color:rgba(0,0,0,.86);
+    textarea {
+      resize: vertical;
+      min-height: 60px;
     }
-    .divider{height:1px;background:rgba(255,255,255,.10);margin:12px 0;}
-    .panel{
-      border-radius:var(--radius2);
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(0,0,0,.22);
-      padding:12px;
-      box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+    .row { display: grid; gap: 12px; }
+    .row.two { grid-template-columns: repeat(2, 1fr); }
+    .row.three { grid-template-columns: repeat(3, 1fr); }
+    .muted-text { color: var(--muted); font-size: .8rem; }
+    .chip {
+      display: inline-block;
+      margin: 4px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: .75rem;
+      border: 1px solid rgba(255,255,255,.15);
     }
-    .panel.good{border-color:rgba(116,255,192,.25);background:rgba(116,255,192,.08);}
-    .panel.warn{border-color:rgba(255,210,125,.25);background:rgba(255,210,125,.08);}
-    .panel.bad{border-color:rgba(255,110,110,.25);background:rgba(255,110,110,.08);}
-    .mono{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:pre-wrap;line-height:1.45;font-size:13px;}
-    .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
-    .chip{
-      padding:7px 10px;border-radius:999px;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(255,255,255,.06);
-      font-size:12px;color:var(--text);
+    .good-chip { color: var(--good); border-color: rgba(116,255,192,.4); }
+    .warn-chip { color: var(--warn); border-color: rgba(255,210,125,.4); }
+    .bad-chip { color: var(--bad); border-color: rgba(255,110,110,.4); }
+    button {
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(180deg, rgba(110,198,255,.85), rgba(110,198,255,.55));
+      color: rgba(0,0,0,.85);
+      font-weight: 700;
+      cursor: pointer;
+      margin-right: 10px;
+      margin-top: 12px;
     }
-    .chip.good{border-color:rgba(116,255,192,.25);color:var(--good);}
-    .chip.warn{border-color:rgba(255,210,125,.25);color:var(--warn);}
-    .chip.bad{border-color:rgba(255,110,110,.25);color:var(--bad);}
-    .hidden{display:none !important;}
-    .rightSticky{position:sticky;top:140px;}
-    @media (max-width:980px){.rightSticky{position:static;}}
-    details{
-      border-radius:16px;
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(255,255,255,.05);
-      padding:10px 12px;margin-top:10px;
+    button.secondary {
+      background: rgba(255,255,255,.08);
+      color: var(--text);
     }
-    summary{cursor:pointer;font-weight:800;color:rgba(255,255,255,.88);}
+    button:disabled { opacity: .4; cursor: not-allowed; }
+    .result { white-space: pre-wrap; font-family: var(--mono); font-size: .8rem; }
+    .hidden { display: none !important; }
+    @media (max-width: 768px) {
+      .row.two, .row.three { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
-  <div class="topbar">
+  <header>
     <div class="wrap">
-      <div class="titleRow">
-        <div>
-          <h1>ABG + O₂ → Interpretation + NIV suggestions → Repeat ABG trend + V/Q heuristic</h1>
-          <div class="sub">Educational decision-support. Outputs are ranges + rationale and escalation flags.</div>
-        </div>
-        <div class="badgeRow" id="statusBadges">
-          <span class="pill"><span class="dot"></span><span id="badgeText">Ready</span></span>
-        </div>
-      </div>
+      <h1>ABG + Oxygen Device → NIV & CPAP Helper</h1>
+      <div class="subheading">Enter a baseline ABG and oxygen device to get NIV setting suggestions. Enter a repeat ABG to see treatment guidance and a summary.</div>
       <div class="tabs">
-        <div class="tab active" id="tabA">Step A · Baseline</div>
-        <div class="tab" id="tabB">Step B · Repeat / Trial</div>
-        <div class="tab" id="tabS">Summary</div>
+        <div class="tab active" id="tabA" onclick="showTab('A')">Section A (Baseline)</div>
+        <div class="tab" id="tabB" onclick="showTab('B')">Section B (Repeat)</div>
+        <div class="tab" id="tabSum" onclick="showTab('Sum')">Summary</div>
       </div>
     </div>
-  </div>
+  </header>
 
-  <div class="wrap">
-    <!-- STEP A -->
-    <div id="panelA">
-      <div class="grid">
-        <div class="card">
-          <h2>Baseline input (ABG A + oxygen device at sample)</h2>
-          <div class="row">
-            <div>
-              <label>Context</label>
-              <select id="context">
-                <option value="unknown" selected>Unknown / mixed</option>
-                <option value="copd">AECOPD / CO₂ retention risk</option>
-                <option value="cpo">Cardiogenic pulmonary oedema</option>
-                <option value="ohs">Obesity hypoventilation / NMD / chest-wall</option>
-                <option value="hypox">De novo hypoxemic failure (pneumonia/ARDS)</option>
-                <option value="lactic">Predominantly lactic metabolic acidosis</option>
-                <option value="asthma">Acute severe asthma</option>
-              </select>
-            </div>
-            <div>
-              <label>SpO₂ target</label>
-              <select id="spo2Target">
-                <option value="normal" selected>92–96% (most adults)</option>
-                <option value="copd">88–92% (CO₂-retention risk)</option>
-                <option value="custom">Custom</option>
-              </select>
-              <input id="spo2Custom" class="hidden" placeholder="e.g., 90–94"/>
-            </div>
-          </div>
-          <div class="row">
-            <div>
-              <label>ABG units</label>
-              <select id="units">
-                <option value="mmhg" selected>mmHg</option>
-                <option value="kpa">kPa</option>
-              </select>
-            </div>
-            <div>
-              <label>Device used for ABG A</label>
-              <select id="devA">
-                <option value="ra">Room air</option>
-                <option value="nc" selected>Nasal cannula</option>
-                <option value="simple">Simple mask</option>
-                <option value="nrb">Non-rebreather</option>
-                <option value="venturi">Venturi (enter %)</option>
-                <option value="hfnc">HFNC (enter %)</option>
-                <option value="niv">NIV/CPAP (enter %)</option>
-              </select>
-            </div>
-          </div>
-          <div class="row">
-            <div>
-              <label>Flow (L/min) OR set FiO₂ (%)</label>
-              <input id="flowOrFio2A" type="number" step="0.1" placeholder="2 (L/min) or 40 (FiO₂%)"/>
-              <div class="small">≥22 means FiO₂ percent; otherwise treat as L/min.</div>
-            </div>
-            <div>
-              <label>Optional device notes</label>
-              <input id="devNotesA" placeholder="e.g., mouth breathing, poor seal"/>
-            </div>
-          </div>
-          <div class="row3">
-            <div><label>pH</label><input id="phA" type="number" step="0.01" placeholder="7.28"/></div>
-            <div><label>PaCO₂</label><input id="pco2A" type="number" step="0.1" placeholder="PaCO₂"/></div>
-            <div><label>PaO₂</label><input id="po2A" type="number" step="0.1" placeholder="PaO₂"/></div>
-          </div>
-          <div class="row3">
-            <div><label>HCO₃⁻</label><input id="hco3A" type="number" step="0.1" placeholder="24"/></div>
-            <div><label>RR</label><input id="rrA" type="number" step="1" placeholder="Resp Rate"/></div>
-            <div><label>SpO₂</label><input id="spo2A" type="number" step="1" placeholder="SpO₂"/></div>
-          </div>
-          <details>
-            <summary>Optional labs (anion gap, lactate, HACOR)</summary>
-            <div class="row3">
-              <div><label>Na⁺</label><input id="naA" type="number" step="0.1" placeholder="Na"/></div>
-              <div><label>Cl⁻</label><input id="clA" type="number" step="0.1" placeholder="Cl"/></div>
-              <div><label>Albumin (g/dL)</label><input id="albA" type="number" step="0.1" placeholder="Alb"/></div>
-            </div>
-            <div class="row3">
-              <div><label>Lactate</label><input id="lacA" type="number" step="0.1" placeholder="Lactate"/></div>
-              <div><label>HR (HACOR)</label><input id="hrA" type="number" step="1" placeholder="HR"/></div>
-              <div><label>GCS (HACOR)</label><input id="gcsA" type="number" step="1" placeholder="GCS"/></div>
-            </div>
-            <div class="small">HACOR uses HR, pH, GCS, RR, and PaO₂/FiO₂. If FiO₂ is estimated, HACOR shows a range.</div>
-          </details>
-          <div class="btnRow">
-            <button id="btnAnalyzeA">Analyze A</button>
-            <button class="secondary" id="btnExampleA">Fill example</button>
-            <button class="secondary" id="btnClearA">Clear A</button>
-          </div>
-          <div class="divider"></div>
-          <div class="panel" id="fio2PanelA">
-            <div class="pill"><span class="dot"></span>Estimated FiO₂ (A)</div>
-            <div class="mono" id="fio2OutA">—</div>
-            <div class="small" id="fio2WhyA"></div>
-          </div>
+  <div class="wrap content">
+    <!-- Section A -->
+    <div class="panel" id="sectionA">
+      <h2>Section A: Baseline ABG + Oxygen Device</h2>
+      <div class="row two">
+        <div>
+          <label for="context">Clinical context</label>
+          <select id="context">
+            <option value="unknown">Unknown / Mixed</option>
+            <option value="copd">COPD / CO₂ Retainer</option>
+            <option value="cpo">Cardiogenic Pulmonary Oedema</option>
+            <option value="nmd">Neuromuscular / Obesity / Chest-wall</option>
+            <option value="hypox">De novo hypoxemic failure (pneumonia/ARDS)</option>
+            <option value="lactic">Lactic / Metabolic acidosis</option>
+            <option value="asthma">Asthma</option>
+          </select>
         </div>
-        <div class="card rightSticky">
-          <h2>Baseline outputs</h2>
-          <div class="panel" id="panelInterpretA">
-            <div class="pill"><span class="dot"></span>Interpretation (A)</div>
-            <div class="mono" id="interpretA">Enter values → Analyze A.</div>
-          </div>
-          <div class="divider"></div>
-          <div class="panel" id="panelPlanA">
-            <div class="pill"><span class="dot"></span>Suggested therapy + NIV ranges (A)</div>
-            <div class="mono" id="planA">—</div>
-          </div>
-          <div class="divider"></div>
-          <div class="panel bad" id="panelFailA">
-            <div class="pill"><span class="dot bad"></span>Escalation / don’t persist flags (A)</div>
-            <div class="mono" id="flagsA">—</div>
-          </div>
-          <div class="chips" id="chipsA"></div>
+        <div>
+          <label for="spo2Target">SpO₂ target</label>
+          <select id="spo2Target" onchange="handleTargetChange()">
+            <option value="normal">92–96% (Most adults)</option>
+            <option value="copd">88–92% (CO₂-retention)</option>
+            <option value="custom">Custom</option>
+          </select>
+          <input id="spo2Custom" class="hidden" placeholder="e.g., 90-94">
         </div>
       </div>
+
+      <div class="row two">
+        <div>
+          <label for="units">ABG units</label>
+          <select id="units">
+            <option value="mmhg">mmHg</option>
+            <option value="kpa">kPa</option>
+          </select>
+        </div>
+        <div>
+          <label for="deviceA">Device at ABG</label>
+          <select id="deviceA">
+            <option value="ra">Room Air</option>
+            <option value="nc" selected>Nasal Cannula</option>
+            <option value="simple">Simple Mask</option>
+            <option value="nrb">Non-Rebreather</option>
+            <option value="venturi">Venturi (set %)</option>
+            <option value="hfnc">HFNC (set %)</option>
+            <option value="niv">NIV/CPAP (set %)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row two">
+        <div>
+          <label for="flowFiO2A">Flow (L/min) or FiO₂ (%)</label>
+          <input id="flowFiO2A" type="number" placeholder="e.g., 4 or 28">
+        </div>
+        <div>
+          <label for="noteA">Device notes (optional)</label>
+          <input id="noteA" placeholder="e.g., poor mask seal">
+        </div>
+      </div>
+
+      <div class="row three">
+        <div>
+          <label for="pH_A">pH</label>
+          <input id="pH_A" type="number" step="0.01">
+        </div>
+        <div>
+          <label for="PaCO2_A">PaCO₂</label>
+          <input id="PaCO2_A" type="number" step="0.1">
+        </div>
+        <div>
+          <label for="PaO2_A">PaO₂</label>
+          <input id="PaO2_A" type="number" step="0.1">
+        </div>
+      </div>
+
+      <div class="row three">
+        <div>
+          <label for="HCO3_A">HCO₃⁻</label>
+          <input id="HCO3_A" type="number" step="0.1">
+        </div>
+        <div>
+          <label for="RR_A">Respiratory rate</label>
+          <input id="RR_A" type="number" step="1">
+        </div>
+        <div>
+          <label for="SpO2_A">SpO₂ (optional)</label>
+          <input id="SpO2_A" type="number" step="1">
+        </div>
+      </div>
+
+      <details>
+        <summary>Optional labs (anion gap, lactate, HACOR)</summary>
+        <div class="row three">
+          <div>
+            <label for="Na_A">Na⁺</label>
+            <input id="Na_A" type="number">
+          </div>
+          <div>
+            <label for="Cl_A">Cl⁻</label>
+            <input id="Cl_A" type="number">
+          </div>
+          <div>
+            <label for="Alb_A">Albumin (g/dL)</label>
+            <input id="Alb_A" type="number">
+          </div>
+        </div>
+        <div class="row three">
+          <div>
+            <label for="Lac_A">Lactate</label>
+            <input id="Lac_A" type="number" step="0.1">
+          </div>
+          <div>
+            <label for="HR_A">HR (HACOR)</label>
+            <input id="HR_A" type="number">
+          </div>
+          <div>
+            <label for="GCS_A">GCS (HACOR)</label>
+            <input id="GCS_A" type="number">
+          </div>
+        </div>
+        <p class="muted-text">HACOR uses HR, pH, GCS, RR, and PaO₂/FiO₂. If FiO₂ is estimated, HACOR is a range.</p>
+      </details>
+
+      <button onclick="analyseA()">Analyse A</button>
+      <button class="secondary" onclick="fillExampleA()">Example A</button>
+      <button class="secondary" onclick="clearA()">Clear A</button>
+
+      <h2>Results (A)</h2>
+      <div class="result" id="resultA">Fill out Section A and click “Analyse A”.</div>
+      <h2>NIV Suggestions (A)</h2>
+      <div class="result" id="nivA">—</div>
+      <h2>Escalation Flags (A)</h2>
+      <div class="result" id="flagsA">—</div>
+      <h2>Interpretation Chips (A)</h2>
+      <div id="chipsA"></div>
     </div>
-    <!-- STEP B -->
-    <div id="panelB" class="hidden">
-      <div class="grid">
-        <div class="card">
-          <h2>Repeat (ABG B) + time on therapy + settings used</h2>
-          <div class="muted">Run “Analyze A” first; Step B compares response and checks for failing NIV trial.</div>
-          <div class="row">
-            <div>
-              <label>Minutes on current therapy</label>
-              <input id="minsB" type="number" step="1" placeholder="e.g., 60"/>
-            </div>
-            <div>
-              <label>Therapy in place</label>
-              <select id="therapyB">
-                <option value="o2" selected>O₂ only</option>
-                <option value="hfnc">HFNC</option>
-                <option value="cpap">CPAP</option>
-                <option value="niv">BiPAP/NIV</option>
-                <option value="imv">Intubated/IMV</option>
-              </select>
-            </div>
-          </div>
-          <div class="row">
-            <div>
-              <label>FiO₂ set (%)</label>
-              <input id="fio2SetB" type="number" step="0.1" placeholder="FiO₂ (B)"/>
-              <div class="small">Prefer to set this; else the app will estimate.</div>
-            </div>
-            <div>
-              <label>NIV settings (opt.)</label>
-              <input id="nivSettingsB" placeholder="e.g., BiPAP 14/5, backup 14"/>
-            </div>
-          </div>
-          <div class="row3">
-            <div><label>pH (B)</label><input id="phB" type="number" step="0.01" placeholder="pH"/></div>
-            <div><label>PaCO₂ (B)</label><input id="pco2B" type="number" step="0.1" placeholder="PaCO₂"/></div>
-            <div><label>PaO₂ (B)</label><input id="po2B" type="number" step="0.1" placeholder="PaO₂"/></div>
-          </div>
-          <div class="row3">
-            <div><label>HCO₃⁻ (B)</label><input id="hco3B" type="number" step="0.1" placeholder="HCO₃"/></div>
-            <div><label>RR (B)</label><input id="rrB" type="number" step="1" placeholder="RR"/></div>
-            <div><label>SpO₂ (B)</label><input id="spo2B" type="number" step="1" placeholder="SpO₂"/></div>
-          </div>
-          <details>
-            <summary>Optional: lactate + HACOR inputs (B)</summary>
-            <div class="row3">
-              <div><label>Lactate (B)</label><input id="lacB" type="number" step="0.1" placeholder="Lactate"/></div>
-              <div><label>HR (B)</label><input id="hrB" type="number" step="1" placeholder="HR"/></div>
-              <div><label>GCS (B)</label><input id="gcsB" type="number" step="1" placeholder="GCS"/></div>
-            </div>
-          </details>
-          <div class="row">
-            <div>
-              <label>Notes (optional)</label>
-              <textarea id="notesB" placeholder="e.g., reduced WOB; still drowsy; leaks"></textarea>
-            </div>
-            <div class="panel">
-              <div class="pill"><span class="dot"></span>Estimated FiO₂ (B)</div>
-              <div class="mono" id="fio2OutB">—</div>
-              <div class="small" id="fio2WhyB"></div>
-            </div>
-          </div>
-          <div class="btnRow">
-            <button id="btnAnalyzeB">Analyze B</button>
-            <button class="secondary" id="btnExampleB">Fill example</button>
-            <button class="secondary" id="btnClearB">Clear B</button>
-          </div>
+
+    <!-- Section B -->
+    <div class="panel hidden" id="sectionB">
+      <h2>Section B: Repeat ABG & Response</h2>
+      <p class="muted-text">Complete Section A first. Enter a repeat ABG and time on therapy to see changes and suggestions.</p>
+      <div class="row two">
+        <div>
+          <label for="minsB">Minutes on current therapy</label>
+          <input id="minsB" type="number" placeholder="e.g., 60">
         </div>
-        <div class="card rightSticky">
-          <h2>Trial response outputs</h2>
-          <div class="panel" id="panelTrend">
-            <div class="pill"><span class="dot"></span>Trend A → B</div>
-            <div class="mono" id="trendOut">Run Analyze A then Analyze B.</div>
-          </div>
-          <div class="divider"></div>
-          <div class="panel" id="panelVQ">
-            <div class="pill"><span class="dot"></span>V/Q vs shunt-like suggestion</div>
-            <div class="mono" id="vqOut">—</div>
-          </div>
-          <div class="divider"></div>
-          <div class="panel bad" id="panelFailB">
-            <div class="pill"><span class="dot bad"></span>Failing NIV trial check</div>
-            <div class="mono" id="failOut">—</div>
-          </div>
-          <div class="divider"></div>
-          <div class="panel" id="panelAdjust">
-            <div class="pill"><span class="dot"></span>Suggested adjustments + rationale</div>
-            <div class="mono" id="adjustOut">—</div>
-          </div>
+        <div>
+          <label for="therapiesB">Therapy during repeat ABG</label>
+          <select id="therapyB">
+            <option value="o2" selected>O₂ only</option>
+            <option value="hfnc">HFNC</option>
+            <option value="cpap">CPAP</option>
+            <option value="niv">BiPAP/NIV</option>
+            <option value="imv">Intubated/IMV</option>
+          </select>
         </div>
       </div>
+
+      <div class="row two">
+        <div>
+          <label for="FiO2_B">FiO₂ set (%) (preferred)</label>
+          <input id="FiO2_B" type="number" placeholder="e.g., 35">
+        </div>
+        <div>
+          <label for="settingsB">NIV settings (optional)</label>
+          <input id="settingsB" placeholder="e.g., IPAP 14/EPAP 6">
+        </div>
+      </div>
+
+      <div class="row three">
+        <div>
+          <label for="pH_B">pH (B)</label>
+          <input id="pH_B" type="number">
+        </div>
+        <div>
+          <label for="PaCO2_B">PaCO₂ (B)</label>
+          <input id="PaCO2_B" type="number">
+        </div>
+        <div>
+          <label for="PaO2_B">PaO₂ (B)</label>
+          <input id="PaO2_B" type="number">
+        </div>
+      </div>
+
+      <div class="row three">
+        <div>
+          <label for="HCO3_B">HCO₃⁻ (B)</label>
+          <input id="HCO3_B" type="number">
+        </div>
+        <div>
+          <label for="RR_B">RR (B)</label>
+          <input id="RR_B" type="number">
+        </div>
+        <div>
+          <label for="SpO2_B">SpO₂ (B)</label>
+          <input id="SpO2_B" type="number">
+        </div>
+      </div>
+
+      <details>
+        <summary>Optional: lactate & HACOR (B)</summary>
+        <div class="row three">
+          <div>
+            <label for="Lac_B">Lactate (B)</label>
+            <input id="Lac_B" type="number" step="0.1">
+          </div>
+          <div>
+            <label for="HR_B">HR (B)</label>
+            <input id="HR_B" type="number">
+          </div>
+          <div>
+            <label for="GCS_B">GCS (B)</label>
+            <input id="GCS_B" type="number">
+          </div>
+        </div>
+      </details>
+
+      <div>
+        <label for="notesB">Clinical notes (optional)</label>
+        <textarea id="notesB" placeholder="Observations and other treatments"></textarea>
+      </div>
+
+      <button onclick="analyseB()">Analyse B</button>
+      <button class="secondary" onclick="fillExampleB()">Example B</button>
+      <button class="secondary" onclick="clearB()">Clear B</button>
+
+      <h2>Response & Treatment Suggestions (B)</h2>
+      <div class="result" id="resultB">Complete Section B inputs and click “Analyse B”.</div>
+      <h2>Flags (B)</h2>
+      <div class="result" id="flagsB">—</div>
     </div>
-    <!-- SUMMARY -->
-    <div id="panelS" class="hidden">
-      <div class="grid">
-        <div class="card">
-          <h2>Auto-generated clinical summary</h2>
-          <div class="muted">Copy-paste into handover: assessment → intervention → rationale → response → next step.</div>
-          <div class="divider"></div>
-          <div class="panel">
-            <div class="mono" id="summaryOut">Run Analyze A (and optionally B) to populate this.</div>
-          </div>
-          <div class="btnRow">
-            <button class="secondary" id="btnCopySummary">Copy summary</button>
-            <button class="secondary" id="btnCopyAll">Copy all outputs</button>
-          </div>
-        </div>
-        <div class="card rightSticky">
-          <h2>“Failing NIV trial” logic used</h2>
-          <div class="muted">
-            This app uses:
-            <ul>
-              <li><strong>HACOR score</strong> (range if FiO₂ is estimated). HACOR &gt; 5 suggests high NIV failure risk.</li>
-              <li><strong>Early physiologic response</strong>: within 1–4 h, pH and RR should improve if NIV works; persistent acidemia or tachypnea warn of failure.</li>
-              <li><strong>Escalation triggers</strong>: reduced consciousness, RR &gt; 25, failure to maintain target SpO₂, severe acidemia.</li>
-            </ul>
-            These heuristics help prompt senior/ICU review; they don’t replace it.
-          </div>
-        </div>
-      </div>
+
+    <!-- Summary -->
+    <div class="panel hidden" id="sectionSum">
+      <h2>Summary & Recommendations</h2>
+      <div class="result" id="summary">Perform Sections A and B to generate a summary.</div>
+      <button class="secondary" onclick="copySummary()">Copy summary</button>
     </div>
   </div>
 
 <script>
-/* ======== JavaScript logic to drive the app ======== */
-const mmHgPerKPa = 7.50062;
-const isNum=v=>Number.isFinite(v);
-const clamp=(x,lo,hi)=>Math.min(hi,Math.max(lo,x));
-const $=id=>document.getElementById(id);
-const fmt=(n,d=2)=>isNum(n)?n.toFixed(d):'—';
-const toMMHg=(v,u)=>u==='kpa'?v*mmHgPerKPa:v;
-
-let baseline=null;
-
-// Tab switching
-function switchTab(tab){
-  $('panelA').classList.toggle('hidden',tab!=='A');
-  $('panelB').classList.toggle('hidden',tab!=='B');
-  $('panelS').classList.toggle('hidden',tab!=='S');
-  ['A','B','S'].forEach(t=> $('tab'+t).classList.toggle('active',t===tab));
+/* Helper functions */
+function getNum(id) {
+  const val = document.getElementById(id).value;
+  if (val === '' || val === null) return NaN;
+  const n = parseFloat(val);
+  return isNaN(n) ? NaN : n;
 }
-$('tabA').onclick=()=>switchTab('A');
-$('tabB').onclick=()=>switchTab('B');
-$('tabS').onclick=()=>switchTab('S');
-
-// Show/hide custom SpO2
-$('spo2Target').onchange=()=>{
-  $('spo2Custom').classList.toggle('hidden',$('spo2Target').value!=='custom');
-};
-
-// Clear helpers
-function clearA(){
-  ['phA','pco2A','po2A','hco3A','rrA','spo2A','naA','clA','albA','lacA','hrA','gcsA','flowOrFio2A','devNotesA'].forEach(id=>$(id).value='');
-  $('context').value='unknown';
-  $('spo2Target').value='normal'; $('spo2Custom').classList.add('hidden');$('spo2Custom').value='';
-  $('units').value='mmhg';
-  $('devA').value='nc';
-  $('interpretA').textContent='Enter values → Analyze A.';
-  $('planA').textContent='—';
-  $('flagsA').textContent='—';
-  $('fio2OutA').textContent='—';$('fio2WhyA').textContent='';
-  $('chipsA').innerHTML='';
+function oxygenLabel(pf) {
+  if (!isFinite(pf)) return 'unknown';
+  if (pf < 100) return 'very severe'; 
+  if (pf < 150) return 'severe';
+  if (pf < 200) return 'moderate';
+  if (pf < 300) return 'mild';
+  return 'near-normal';
 }
-function clearB(){
-  ['minsB','fio2SetB','nivSettingsB','phB','pco2B','po2B','hco3B','rrB','spo2B','lacB','hrB','gcsB','notesB'].forEach(id=>$(id).value='');
-  $('therapyB').value='o2';
-  $('fio2OutB').textContent='—';$('fio2WhyB').textContent='';
-  $('trendOut').textContent='Run Analyze A then Analyze B.';
-  $('vqOut').textContent='—';
-  $('failOut').textContent='—';
-  $('adjustOut').textContent='—';
+function addChip(containerId, text, tone) {
+  const div = document.createElement('span');
+  div.className = 'chip ' + (tone || '');
+  div.textContent = text;
+  document.getElementById(containerId).appendChild(div);
 }
-$('btnClearA').onclick=clearA;
-$('btnClearB').onclick=clearB;
 
-// Example fill
-$('btnExampleA').onclick=function(){
+/* Tab switching */
+function showTab(tab) {
+  // Toggle visibility
+  document.getElementById('sectionA').classList.toggle('hidden', tab !== 'A');
+  document.getElementById('sectionB').classList.toggle('hidden', tab !== 'B');
+  document.getElementById('sectionSum').classList.toggle('hidden', tab !== 'Sum');
+  // Toggle active tabs
+  document.getElementById('tabA').classList.toggle('active', tab === 'A');
+  document.getElementById('tabB').classList.toggle('active', tab === 'B');
+  document.getElementById('tabSum').classList.toggle('active', tab === 'Sum');
+}
+function handleTargetChange() {
+  document.getElementById('spo2Custom').classList.toggle('hidden', document.getElementById('spo2Target').value !== 'custom');
+}
+
+/* Compute FiO2 from device and flow or direct setting */
+function estimateFiO2(device, flowOrFi) {
+  if (device === 'ra') return {min: 0.21, max: 0.21, info: 'Room air'};
+  if (!isFinite(flowOrFi)) return {min: NaN, max: NaN, info: 'Flow/FiO₂ not provided'};
+  if (flowOrFi >= 22) {
+    const f = Math.min(1, Math.max(0.21, flowOrFi / 100));
+    return {min: f, max: f, info: 'Using set FiO₂'};
+  }
+  const L = flowOrFi;
+  if (device === 'nc') {
+    return {
+      min: Math.min(0.44, 0.21 + 0.03 * L),
+      max: Math.min(0.44, 0.21 + 0.04 * L),
+      info: 'Nasal cannula approximation'
+    };
+  }
+  if (device === 'simple') {
+    return {
+      min: Math.max(0.28, 0.28 + 0.01 * (L - 6)),
+      max: Math.min(0.60, 0.40 + 0.02 * (L - 6)),
+      info: 'Simple mask approximation'
+    };
+  }
+  if (device === 'nrb') {
+    return {
+      min: Math.max(0.60, 0.60 + 0.01 * (L - 10)),
+      max: Math.min(0.95, 0.80 + 0.02 * (L - 10)),
+      info: 'Non-rebreather approximation'
+    };
+  }
+  // For Venturi/HFNC/NIV we expect FiO2 set via %, if user enters L/min here we cannot guess
+  return {min: NaN, max: NaN, info: 'Set FiO₂% is required'};
+}
+
+/* Acid-base analysis & compensation rules */
+function analyseAcidBase(pH, pCO2, hco3) {
+  if (!isFinite(pH) || !isFinite(pCO2) || !isFinite(hco3)) {
+    return {primary: 'Undetermined', text: 'Need pH, PaCO₂ & HCO₃⁻', flags: []};
+  }
+  const acidemia = pH < 7.35;
+  const alkalemia = pH > 7.45;
+  const respAcid = pCO2 > 45;
+  const respAlk  = pCO2 < 35;
+  const metabAcid = hco3 < 22;
+  const metabAlk  = hco3 > 26;
+  let primary;
+  if (acidemia) {
+    if (respAcid && !metabAcid) primary = 'Primary respiratory acidosis';
+    else if (metabAcid && !respAcid) primary = 'Primary metabolic acidosis';
+    else if (respAcid && metabAcid) primary = 'Mixed metabolic + respiratory acidosis';
+    else primary = 'Acidemia (driver unclear)';
+  } else if (alkalemia) {
+    if (respAlk && !metabAlk) primary = 'Primary respiratory alkalosis';
+    else if (metabAlk && !respAlk) primary = 'Primary metabolic alkalosis';
+    else if (respAlk && metabAlk) primary = 'Mixed metabolic + respiratory alkalosis';
+    else primary = 'Alkalemia (driver unclear)';
+  } else {
+    primary = 'Near-normal pH / compensated';
+  }
+  let textLines = [];
+  textLines.push(`Acid-base interpretation: ${primary}.`);
+  // Winter's formula for metabolic acidosis
+  if (metabAcid) {
+    const exp = 1.5 * hco3 + 8;
+    textLines.push(`• Winter's: expected PaCO₂ ≈ ${exp.toFixed(1)} ±2 mmHg`);
+    if (pCO2 > exp + 2) textLines.push('  → PaCO₂ higher than expected (possible ventilatory failure)');
+    if (pCO2 < exp - 2) textLines.push('  → PaCO₂ lower than expected (possible respiratory alkalosis)');
+  }
+  // Metabolic alkalosis expected pCO2
+  if (metabAlk) {
+    const exp = 0.7 * (hco3 - 24) + 40;
+    textLines.push(`• Met alkalosis: expected PaCO₂ ≈ ${exp.toFixed(1)} ±5 mmHg`);
+    if (pCO2 > exp + 5) textLines.push('  → PaCO₂ higher than expected (respiratory acidosis)');
+    if (pCO2 < exp - 5) textLines.push('  → PaCO₂ lower than expected (respiratory alkalosis)');
+  }
+  // Respiratory acidosis expected HCO3
+  if (respAcid) {
+    const expA = 24 + 1 * ((pCO2 - 40) / 10);
+    const expC = 24 + 3.5 * ((pCO2 - 40) / 10);
+    textLines.push(`• Resp acidosis: expected HCO₃⁻ acute≈${expA.toFixed(1)}, chronic≈${expC.toFixed(1)}`);
+    if (hco3 < expA - 2) textLines.push('  → HCO₃⁻ lower than expected (extra metabolic acidosis)');
+    if (hco3 > expC + 2) textLines.push('  → HCO₃⁻ higher than expected (extra metabolic alkalosis)');
+  }
+  // Respiratory alkalosis expected HCO3
+  if (respAlk) {
+    const expA = 24 - 2 * ((40 - pCO2) / 10);
+    const expC = 24 - 4 * ((40 - pCO2) / 10);
+    textLines.push(`• Resp alkalosis: expected HCO₃⁻ acute≈${expA.toFixed(1)}, chronic≈${expC.toFixed(1)}`);
+    if (hco3 > expA + 2) textLines.push('  → HCO₃⁻ higher than expected (extra metabolic alkalosis)');
+    if (hco3 < expC - 2) textLines.push('  → HCO₃⁻ lower than expected (extra metabolic acidosis)');
+  }
+  const flags = [];
+  if (pH < 7.25) flags.push('pH < 7.25 (high risk)');
+  if (pH < 7.20) flags.push('pH < 7.20 (very high risk)');
+  if (pCO2 > 60) flags.push('PaCO₂ > 60 (hypercapnia)');
+  if (pCO2 > 80) flags.push('PaCO₂ > 80 (severe hypercapnia)');
+  return { primary, text: textLines.join('\n'), flags };
+}
+
+/* Anion gap & lactate */
+function calcAnionGap(na, cl, hco3, alb) {
+  if (!isFinite(na) || !isFinite(cl) || !isFinite(hco3)) return null;
+  const ag = na - (cl + hco3);
+  const agCorr = isFinite(alb) ? ag + 2.5 * (4.0 - alb) : ag;
+  return { ag, agCorr };
+}
+
+/* HACOR score (range if FiO₂ range) */
+function calcHACOR(hr, pH, gcs, rr, paO2_mmHg, fio2Min, fio2Max) {
+  // Score for HR
+  const hrPts = hr >= 121 ? 1 : 0;
+  // Score for pH
+  let phPts;
+  if (!isFinite(pH)) phPts = 0;
+  else if (pH >= 7.35) phPts = 0;
+  else if (pH >= 7.30) phPts = 2;
+  else if (pH >= 7.25) phPts = 3;
+  else phPts = 4;
+  // Score for GCS
+  let gcsPts;
+  if (!isFinite(gcs) || gcs === 15) gcsPts = 0;
+  else if (gcs >= 13) gcsPts = 2;
+  else if (gcs >= 11) gcsPts = 5;
+  else gcsPts = 10;
+  // Score for RR
+  let rrPts;
+  if (!isFinite(rr)) rrPts = 0;
+  else if (rr <= 30) rrPts = 0;
+  else if (rr <= 35) rrPts = 1;
+  else if (rr <= 40) rrPts = 2;
+  else if (rr <= 45) rrPts = 3;
+  else rrPts = 4;
+  // Score for PaO₂/FiO₂ range
+  if (!isFinite(paO2_mmHg) || !isFinite(fio2Min) || !isFinite(fio2Max)) {
+    return null;
+  }
+  const pfMin = paO2_mmHg / fio2Max;
+  const pfMax = paO2_mmHg / fio2Min;
+  function pfScore(pf) {
+    if (pf >= 201) return 0;
+    if (pf >= 176) return 2;
+    if (pf >= 151) return 3;
+    if (pf >= 126) return 4;
+    if (pf >= 101) return 5;
+    return 6;
+  }
+  const pfPtsLow  = pfScore(pfMin);
+  const pfPtsHigh = pfScore(pfMax);
+  const totalMin = hrPts + phPts + gcsPts + rrPts + Math.min(pfPtsLow, pfPtsHigh);
+  const totalMax = hrPts + phPts + gcsPts + rrPts + Math.max(pfPtsLow, pfPtsHigh);
+  return { min: totalMin, max: totalMax };
+}
+
+/* Globals to store baseline and repeat analyses */
+let baselineData = null;
+let repeatData   = null;
+
+/* Fill example values for Section A */
+function fillExampleA() {
   clearA();
-  $('context').value='copd';
-  $('spo2Target').value='copd';
-  $('units').value='mmhg';
-  $('devA').value='nc';
-  $('flowOrFio2A').value=2;
-  $('phA').value=7.28; $('pco2A').value=68; $('po2A').value=58;
-  $('hco3A').value=31; $('rrA').value=30; $('spo2A').value=88;
-  $('naA').value=140; $('clA').value=100; $('albA').value=4.0;
-  $('lacA').value=1.6; $('hrA').value=118; $('gcsA').value=15;
-};
-$('btnExampleB').onclick=function(){
-  $('minsB').value=60;
-  $('therapyB').value='niv';
-  $('fio2SetB').value=28;
-  $('nivSettingsB').value='BiPAP 14/5';
-  $('phB').value=7.32; $('pco2B').value=60; $('po2B').value=66;
-  $('hco3B').value=30; $('rrB').value=24; $('spo2B').value=90;
-  $('lacB').value=1.4; $('hrB').value=110; $('gcsB').value=15;
-};
-
-// Compute FiO2
-function computeFiO2(device,val){
-  if(device==='ra') return {min:0.21,max:0.21,why:'Room air'};
-  if(!isNum(val)) return {min:NaN,max:NaN,why:'Enter flow or FiO₂'};
-  if(val>=22){
-    const f=clamp(val/100,0.21,1);return {min:f,max:f,why:'Set FiO₂'};
-  }
-  const L=val;
-  if(device==='nc'){return {min:clamp(0.21+0.03*L,0.21,0.44),max:clamp(0.21+0.04*L,0.21,0.44),why:'NC approx'};}
-  if(device==='simple'){return {min:clamp(0.28+0.01*(L-6),0.28,0.45),max:clamp(0.40+0.02*(L-6),0.40,0.60),why:'Simple mask'};}
-  if(device==='nrb'){return {min:clamp(0.60+0.01*(L-10),0.60,0.75),max:clamp(0.80+0.02*(L-10),0.80,0.95),why:'NRB approx'};}
-  return {min:NaN,max:NaN,why:'Set FiO₂% required'};
+  document.getElementById('context').value = 'copd';
+  document.getElementById('spo2Target').value = 'copd';
+  document.getElementById('deviceA').value = 'nc';
+  document.getElementById('flowFiO2A').value = 2;
+  document.getElementById('pH_A').value = 7.28;
+  document.getElementById('PaCO2_A').value = 68;
+  document.getElementById('PaO2_A').value = 58;
+  document.getElementById('HCO3_A').value = 31;
+  document.getElementById('RR_A').value = 30;
+  document.getElementById('SpO2_A').value = 88;
+  document.getElementById('Na_A').value = 140;
+  document.getElementById('Cl_A').value = 100;
+  document.getElementById('Alb_A').value = 4.0;
+  document.getElementById('Lac_A').value = 1.6;
+  document.getElementById('HR_A').value = 118;
+  document.getElementById('GCS_A').value = 15;
 }
 
-// Indices calculations
-function calcIndices(pao2mm,paco2mm,fio2min,fio2max,spo2){
-  const out={};
-  out.pfLow=isNum(pao2mm)&&isNum(fio2max)?pao2mm/fio2max:NaN;
-  out.pfHigh=isNum(pao2mm)&&isNum(fio2min)?pao2mm/fio2min:NaN;
-  out.sfLow=isNum(spo2)&&isNum(fio2max)?spo2/fio2max:NaN;
-  out.sfHigh=isNum(spo2)&&isNum(fio2min)?spo2/fio2min:NaN;
-  if(isNum(pao2mm)&&isNum(paco2mm)&&isNum(fio2min)&&isNum(fio2max)){
-    const fMid=(fio2min+fio2max)/2;
-    const PA=fMid*(760-47)-paco2mm/0.8;
-    out.PAO2=PA;
-    out.Aa=PA-pao2mm;
-    out.aA=pao2mm/PA;
-    const PAmin=fio2min*(760-47)-paco2mm/0.8;
-    const PAmax=fio2max*(760-47)-paco2mm/0.8;
-    out.AaMin=Math.min(PAmin-pao2mm,PAmax-pao2mm);
-    out.AaMax=Math.max(PAmin-pao2mm,PAmax-pao2mm);
-    out.aAMin=Math.min(pao2mm/PAmin,pao2mm/PAmax);
-    out.aAMax=Math.max(pao2mm/PAmin,pao2mm/PAmax);
-  }else{
-    out.PAO2=NaN;out.Aa=NaN;out.aA=NaN;out.AaMin=NaN;out.AaMax=NaN;out.aAMin=NaN;out.aAMax=NaN;
-  }
-  return out;
+/* Fill example for Section B (based on example A) */
+function fillExampleB() {
+  clearB();
+  document.getElementById('minsB').value = 60;
+  document.getElementById('therapyB').value = 'niv';
+  document.getElementById('FiO2_B').value = 28;
+  document.getElementById('settingsB').value = 'IPAP 14 / EPAP 5';
+  document.getElementById('pH_B').value = 7.32;
+  document.getElementById('PaCO2_B').value = 60;
+  document.getElementById('PaO2_B').value = 66;
+  document.getElementById('HCO3_B').value = 30;
+  document.getElementById('RR_B').value = 24;
+  document.getElementById('SpO2_B').value = 90;
+  document.getElementById('Lac_B').value = 1.4;
+  document.getElementById('HR_B').value = 110;
+  document.getElementById('GCS_B').value = 15;
 }
 
-// Acid-base and compensation
-function analyzeAcidBase(ph,paco2mm,hco3){
-  if(![ph,paco2mm,hco3].every(isNum)){
-    return {primary:'Undetermined',text:'Need pH+PaCO₂+HCO₃⁻',flags:[]};
-  }
-  const acidemia=ph<7.35, alkalemia=ph>7.45;
-  const respAcid=paco2mm>45, respAlk=paco2mm<35;
-  const metabAcid=hco3<22, metabAlk=hco3>26;
-  let prim='Near-normal pH';
-  if(acidemia){
-    if(respAcid && !metabAcid) prim='Respiratory acidosis';
-    else if(metabAcid && !respAcid) prim='Metabolic acidosis';
-    else if(respAcid && metabAcid) prim='Mixed metabolic + respiratory acidosis';
-    else prim='Acidemia, unclear driver';
-  }else if(alkalemia){
-    if(respAlk && !metabAlk) prim='Respiratory alkalosis';
-    else if(metabAlk && !respAlk) prim='Metabolic alkalosis';
-    else if(respAlk && metabAlk) prim='Mixed metabolic + respiratory alkalosis';
-    else prim='Alkalemia, unclear driver';
-  }
-  const lines=[];
-  lines.push(`Acid–base: ${prim}`);
-  if(metabAcid){
-    const exp=1.5*hco3+8;
-    lines.push(`• Winter: expected PaCO₂ ≈ ${fmt(exp,1)} ±2`);
-    if(paco2mm>exp+2) lines.push('  ↳ PaCO₂ higher than expected → concurrent respiratory acidosis');
-    if(paco2mm<exp-2) lines.push('  ↳ PaCO₂ lower than expected → concurrent respiratory alkalosis');
-  }
-  if(metabAlk){
-    const exp=0.7*(hco3-24)+40;
-    lines.push(`• Met alkalosis: expected PaCO₂ ≈ ${fmt(exp,1)} ±5`);
-    if(paco2mm>exp+5) lines.push('  ↳ PaCO₂ higher than expected → concurrent respiratory acidosis');
-    if(paco2mm<exp-5) lines.push('  ↳ PaCO₂ lower than expected → concurrent respiratory alkalosis');
-  }
-  if(respAcid){
-    const expA=24 + 1*((paco2mm-40)/10);
-    const expC=24 + 3.5*((paco2mm-40)/10);
-    lines.push(`• Resp acidosis: expected HCO₃⁻ acute≈${fmt(expA,1)}, chronic≈${fmt(expC,1)}`);
-    if(hco3<expA-2) lines.push('  ↳ HCO₃⁻ lower than expected → extra metabolic acidosis');
-    if(hco3>expC+2) lines.push('  ↳ HCO₃⁻ higher than expected → extra metabolic alkalosis or chronic retention');
-  }
-  if(respAlk){
-    const expA=24 - 2*((40-paco2mm)/10);
-    const expC=24 - 4*((40-paco2mm)/10);
-    lines.push(`• Resp alkalosis: expected HCO₃⁻ acute≈${fmt(expA,1)}, chronic≈${fmt(expC,1)}`);
-    if(hco3>expA+2) lines.push('  ↳ HCO₃⁻ higher than expected → extra metabolic alkalosis');
-    if(hco3<expC-2) lines.push('  ↳ HCO₃⁻ lower than expected → extra metabolic acidosis');
-  }
-  const flags=[];
-  if(ph<7.25) flags.push('pH < 7.25');
-  if(ph<7.20) flags.push('pH < 7.20');
-  if(paco2mm>60) flags.push('PaCO₂ > 60');
-  if(paco2mm>80) flags.push('PaCO₂ > 80');
-  return {primary:prim,text:lines.join('\\n'),flags};
+/* Clear Section A fields/results */
+function clearA() {
+  ['pH_A','PaCO2_A','PaO2_A','HCO3_A','RR_A','SpO2_A','Na_A','Cl_A','Alb_A','Lac_A','HR_A','GCS_A','flowFiO2A','noteA'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('resultA').textContent = 'Fill out Section A and click “Analyse A”.';
+  document.getElementById('nivA').textContent = '—';
+  document.getElementById('flagsA').textContent = '—';
+  document.getElementById('chipsA').innerHTML = '';
+  baselineData = null;
+  // Reset summary and Section B results
+  document.getElementById('resultB').textContent = 'Complete Section B inputs and click “Analyse B”.';
+  document.getElementById('flagsB').textContent = '—';
+  document.getElementById('summary').textContent = 'Perform Sections A and B to generate a summary.';
 }
 
-// HACOR scoring
-function hacorScore(hr,ph,gcs,rr,pao2mm,fio2Min,fio2Max){
-  if(![hr,ph,gcs,rr,pao2mm,fio2Min,fio2Max].every(isNum)) return {min:NaN,max:NaN};
-  const base=hacorPtsHR(hr)+hacorPtsPH(ph)+hacorPtsGCS(gcs)+hacorPtsRR(rr);
-  const pfLow=pao2mm/fio2Max;const pfHigh=pao2mm/fio2Min;
-  const ptsLow=hacorPtsPF(pfLow);const ptsHigh=hacorPtsPF(pfHigh);
-  return {min:base+Math.min(ptsLow,ptsHigh),max:base+Math.max(ptsLow,ptsHigh)};
+/* Clear Section B fields/results */
+function clearB() {
+  ['minsB','FiO2_B','settingsB','pH_B','PaCO2_B','PaO2_B','HCO3_B','RR_B','SpO2_B','Lac_B','HR_B','GCS_B','notesB'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('therapyB').value = 'o2';
+  document.getElementById('resultB').textContent = 'Complete Section B inputs and click “Analyse B”.';
+  document.getElementById('flagsB').textContent = '—';
+  document.getElementById('summary').textContent = baselineData ? 'Section A analyzed. Perform Section B to complete.' : 'Perform Sections A and B to generate a summary.';
+  repeatData = null;
 }
-function hacorPtsHR(hr){return hr>=121?1:0;}
-function hacorPtsPH(ph){if(ph>=7.35)return 0;if(ph>=7.30)return 2;if(ph>=7.25)return 3;return 4;}
-function hacorPtsGCS(g){if(g===15)return 0;if(g>=13)return 2;if(g>=11)return 5;return 10;}
-function hacorPtsRR(rr){if(rr<=30)return 0;if(rr<=35)return 1;if(rr<=40)return 2;if(rr<=45)return 3;return 4;}
-function hacorPtsPF(pf){if(pf>=201)return 0;if(pf>=176)return 2;if(pf>=151)return 3;if(pf>=126)return 4;if(pf>=101)return 5;return 6;}
 
-// Analyze baseline
-$('btnAnalyzeA').onclick=function(){
-  const units=$('units').value;
-  const dev=$('devA').value;
-  const flow=Number($('flowOrFio2A').value);
-  const fio2=computeFiO2(dev,flow);
-  $('fio2OutA').textContent=isNum(fio2.min)?fmt(fio2.min*100,0)+'%–'+fmt(fio2.max*100,0)+'%':'—';
-  $('fio2WhyA').textContent=fio2.why;
-  // ABG
-  const pH=parseFloat($('phA').value);
-  const pCO2=toMMHg(parseFloat($('pco2A').value),units);
-  const pO2=toMMHg(parseFloat($('po2A').value),units);
-  const hco3=parseFloat($('hco3A').value);
-  const rr=parseFloat($('rrA').value);
-  const spo2=parseFloat($('spo2A').value);
-  const na=parseFloat($('naA').value);
-  const cl=parseFloat($('clA').value);
-  const alb=parseFloat($('albA').value);
-  const lac=parseFloat($('lacA').value);
-  const hr=parseFloat($('hrA').value);
-  const gcs=parseFloat($('gcsA').value);
+/* Analyse Section A: baseline ABG and NIV suggestions */
+function analyseA() {
+  // Determine FiO2 range
+  const dev = document.getElementById('deviceA').value;
+  const flowFi = getNum('flowFiO2A');
+  const fio2Range = estimateFiO2(dev, flowFi);
+  // Convert ABG values to mmHg if necessary
+  const units = document.getElementById('units').value;
+  const pH  = getNum('pH_A');
+  const PaCO2 = toMMHg(getNum('PaCO2_A'), units);
+  const PaO2  = toMMHg(getNum('PaO2_A'), units);
+  const HCO3 = getNum('HCO3_A');
+  const RR  = getNum('RR_A');
+  const SpO2 = getNum('SpO2_A');
+  // Optional labs
+  const Na  = getNum('Na_A');
+  const Cl  = getNum('Cl_A');
+  const Alb = getNum('Alb_A');
+  const Lac = getNum('Lac_A');
+  const HR  = getNum('HR_A');
+  const GCS = getNum('GCS_A');
+
   // Indices
-  const idx=calcIndices(pO2,pCO2,fio2.min,fio2.max,spo2);
+  const indices = calcIndices(PaO2, PaCO2, fio2Range.min, fio2Range.max, SpO2);
   // Acid-base
-  const acid=analyzeAcidBase(pH,pCO2,hco3);
-  // AG & delta
-  let agLine='';
-  if(isNum(na)&&isNum(cl)&&isNum(hco3)){
-    const ag=na-(cl+hco3);
-    const corr=isNum(alb)?ag+2.5*(4.0-alb):ag;
-    agLine=`AG: ${fmt(ag,1)} (corr: ${fmt(corr,1)})`;
-  }
+  const acidInfo = analyseAcidBase(pH, PaCO2, HCO3);
+  // AG
+  const agInfo = calcAnionGap(Na, Cl, HCO3, Alb);
   // HACOR
-  const hac=hacorScore(hr,pH,gcs,rr,pO2,fio2.min,fio2.max);
-  // Interpret
-  const lines=[];
-  lines.push(`FiO₂: ${isNum(fio2.min)?fmt(fio2.min*100,0)+'–'+fmt(fio2.max*100,0)+'%':'unknown'}`);
-  if(isNum(idx.pfLow)) lines.push(`P/F: ${fmt(idx.pfLow,0)}–${fmt(idx.pfHigh,0)} mmHg (${oxygenLabel(idx.pfLow)})`);
-  if(isNum(idx.AaMin)) lines.push(`A–a: ${fmt(idx.AaMin,0)}–${fmt(idx.AaMax,0)} mmHg`);
-  if(isNum(idx.aAMin)) lines.push(`a/A: ${fmt(idx.aAMin,2)}–${fmt(idx.aAMax,2)}`);
-  if(isNum(lac)) lines.push(`Lactate: ${fmt(lac,1)}`);
-  if(agLine) lines.push(agLine);
-  $('interpretA').textContent=lines.join('\\n')+'\\n\\n'+acid.text;
-  $('flagsA').textContent=acid.flags.join('\\n')||'—';
+  const hacor = calcHACOR(HR, pH, GCS, RR, PaO2, fio2Range.min, fio2Range.max);
+
+  // Build interpretation output
+  let resultLines = [];
+  if (isFinite(fio2Range.min)) {
+    resultLines.push(`FiO₂: ${(fio2Range.min * 100).toFixed(0)}–${(fio2Range.max * 100).toFixed(0)}% (${fio2Range.info})`);
+  } else {
+    resultLines.push('FiO₂: unknown');
+  }
+  if (isFinite(indices.pfLow)) {
+    resultLines.push(`P/F: ${indices.pfLow.toFixed(0)}–${indices.pfHigh.toFixed(0)} mmHg (${oxygenLabel(indices.pfLow)})`);
+  }
+  if (isFinite(indices.AaMin)) {
+    resultLines.push(`A–a: ${indices.AaMin.toFixed(0)}–${indices.AaMax.toFixed(0)} mmHg`);
+  }
+  if (isFinite(indices.aAMin)) {
+    resultLines.push(`a/A: ${indices.aAMin.toFixed(2)}–${indices.aAMax.toFixed(2)}`);
+  }
+  if (isFinite(Lac)) {
+    resultLines.push(`Lactate: ${Lac.toFixed(1)}`);
+  }
+  if (agInfo) {
+    resultLines.push(`AG: ${agInfo.ag.toFixed(1)} (corr: ${agInfo.agCorr.toFixed(1)})`);
+  }
+  // Append acid-base text
+  resultLines.push('');
+  resultLines.push(acidInfo.text);
+  document.getElementById('resultA').textContent = resultLines.join('\n');
+
+  // NIV suggestions
+  let nivLines = [];
+  const context = document.getElementById('context').value;
+  const spo2Target = (function () {
+    const tgtSel = document.getElementById('spo2Target').value;
+    return tgtSel === 'custom' ? (document.getElementById('spo2Custom').value || '?') :
+           tgtSel === 'copd' ? '88–92%' : '92–96%';
+  })();
+  nivLines.push(`SpO₂ target: ${spo2Target}.`);
+  // Suggest modality based on hypercapnia/acidemia/hypoxemia
+  const hypercap = PaCO2 > 45;
+  const acidemic = pH < 7.35;
+  const hypox    = PaO2 < 60;
+  if (hypercap && acidemic) {
+    // BiPAP suggestions
+    nivLines.push('→ BiPAP/NIV recommended:');
+    nivLines.push('   Start IPAP ≈ 10–12 cmH₂O, EPAP ≈ 4–5 cmH₂O.');
+    nivLines.push('   Increase IPAP by 2–3 if PaCO₂ remains high or pH remains acidemic.');
+    nivLines.push('   Increase EPAP and/or FiO₂ if oxygenation is poor.');
+    nivLines.push('   Reassess pH, PaCO₂, and work of breathing within 1–2 hours.');
+  } else if (hypox && !hypercap) {
+    // CPAP/HFNC suggestions
+    nivLines.push('→ CPAP or HFNC recommended:');
+    nivLines.push('   Start CPAP ≈ 5–10 cmH₂O (or HFNC with titrated FiO₂).');
+    nivLines.push('   If using BiPAP for oxygenation: set EPAP ≈ 5–10 and pressure support 5–10.');
+    nivLines.push('   Reassess oxygenation and work of breathing within 1–2 hours; if not improving, consider escalation.');
+  } else {
+    nivLines.push('→ No single modality indicated by ABG alone; base decision on clinical judgement and work of breathing.');
+    if (context === 'lactic') {
+      nivLines.push('   In lactic/metabolic acidosis, primary therapy is treating the cause; NIV can unload work of breathing but must preserve compensatory ventilation.');
+    }
+  }
+  document.getElementById('nivA').textContent = nivLines.join('\n');
+
+  // Flags and chips
+  let flags = [...acidInfo.flags];
+  if (isFinite(indices.pfLow) && indices.pfLow < 150) flags.push('Very low P/F');
+  if (isFinite(hacor?.max) && hacor.max > 5) flags.push('HACOR > 5 (high NIV failure risk)');
+  if (isFinite(Lac)) {
+    if (Lac > 4) flags.push('Lactate > 4');
+    if (Lac > 6) flags.push('Lactate > 6 (critical)');
+  }
+  document.getElementById('flagsA').textContent = flags.length ? flags.join('\n') : '—';
+
   // Chips
-  $('chipsA').innerHTML='';
-  if(isNum(idx.pfLow)&&idx.pfLow<200) addChip('P/F < 200','warn');
-  if(isNum(idx.pfLow)&&idx.pfLow<150) addChip('P/F < 150','bad');
-  acid.flags.forEach(fl=> addChip(fl,fl.includes('severe')?'bad':'warn'));
-  if(isNum(hac.max)&&hac.max>5) addChip('HACOR > 5','warn');
-  if(isNum(lac)&&lac>4) addChip('Lactate > 4','warn');
-  if(isNum(lac)&&lac>6) addChip('Lactate > 6','bad');
-  // Plan / escalation
-  const ctx=$('context').value;
-  let plan=['Target SpO₂: '+($('spo2Target').value==='custom'?$('spo2Custom').value||'?':$('spo2Target').value==='copd'?'88–92%':'92–96%')];
-  const hypercap=pCO2>45; const acidemia=pH<7.35; const hypox=pO2<60;
-  if(hypercap&&acidemia){
-    plan.push('Modality: BiPAP/NIV');
-    plan.push('Start: IPAP ~10–12 cmH₂O, EPAP 4–5 cmH₂O');
-    plan.push('Titrate IPAP +2–3 if CO₂/pH not improving');
-    plan.push('Increase EPAP/FiO₂ if oxygenation poor');
-  }else if(hypox&&!hypercap){
-    plan.push('Modality: CPAP or HFNC');
-    plan.push('Start CPAP 5–10 cmH₂O; titrate for oxygenation');
-    plan.push('If using BiPAP for oxygenation: EPAP 5–10, PS 5–10 (monitor)');
-  }else{
-    plan.push('No single modality forced; use clinical judgment');
-    if(ctx==='lactic') plan.push('In lactic acidosis: treat cause; NIV to offload WOB without suppressing ventilation');
-  }
-  plan.push('Reassess in 1–2 h: expect pH/PaCO₂ improvement if working');
-  $('planA').textContent=plan.join('\\n');
-  baseline={
-    ph:pH,pco2mm:pCO2,pao2mm:pO2,hco3, rr, spo2, na, cl, alb, lac, hr, gcs,
-    fio2Min:fio2.min,fio2Max:fio2.max,
-    indices:idx, acid, agLine, hac, context:ctx, plan
-  };
-  updateSummary();
-};
+  const chipsContainer = document.getElementById('chipsA');
+  chipsContainer.innerHTML = '';
+  flags.forEach(f => {
+    let tone = 'warn-chip';
+    if (f.includes('< 150') || f.includes('< 7.25') || f.includes('critical')) tone = 'bad-chip';
+    if (f.includes('HACOR')) tone = 'warn-chip';
+    addChip('chipsA', f, tone);
+  });
 
-// Analyze B
-$('btnAnalyzeB').onclick=function(){
-  if(!baseline){alert('Analyze A first');return;}
-  // Determine FiO2 for B
-  const set=Number($('fio2SetB').value);
-  let fio2;
-  if(isNum(set)){const f=clamp(set/100,0.21,1.0);fio2={min:f,max:f,why:'Set'};}
-  else{fio2=computeFiO2($('devA').value,Number($('flowOrFio2A').value));}
-  $('fio2OutB').textContent=isNum(fio2.min)?fmt(fio2.min*100,0)+'%–'+fmt(fio2.max*100,0)+'%':'—';
-  $('fio2WhyB').textContent=fio2.why;
-  // ABG B
-  const units=$('units').value;
-  const pH=parseFloat($('phB').value);
-  const pCO2=toMMHg(parseFloat($('pco2B').value),units);
-  const pO2=toMMHg(parseFloat($('po2B').value),units);
-  const hco3=parseFloat($('hco3B').value);
-  const rr=parseFloat($('rrB').value);
-  const spo2=parseFloat($('spo2B').value);
-  const hr=parseFloat($('hrB').value);
-  const gcs=parseFloat($('gcsB').value);
-  const lac=parseFloat($('lacB').value);
-  const therapy=$('therapyB').value;
-  // Indices
-  const idx=calcIndices(pO2,pCO2,fio2.min,fio2.max,spo2);
-  // Acid
-  const acid=analyzeAcidBase(pH,pCO2,hco3);
-  // HACOR
-  const hac=hacorScore(hr,pH,gcs,rr,pO2,fio2.min,fio2.max);
-  // Trend
-  let t=[];
-  const mins=parseFloat($('minsB').value);
-  if(isNum(mins)) t.push('Time on therapy: '+fmt(mins,0)+' min');
-  if(isNum(baseline.ph)&&isNum(pH)) t.push('pH: '+fmt(baseline.ph,2)+' → '+fmt(pH,2));
-  if(isNum(baseline.pco2mm)&&isNum(pCO2)) t.push('PaCO₂: '+Math.round(baseline.pco2mm)+' → '+Math.round(pCO2)+' mmHg');
-  if(isNum(baseline.pao2mm)&&isNum(pO2)) t.push('PaO₂: '+Math.round(baseline.pao2mm)+' → '+Math.round(pO2)+' mmHg');
-  if(isNum(baseline.indices.pfLow)&&isNum(idx.pfLow)) t.push('P/F: '+fmt(baseline.indices.pfLow,0)+' → '+fmt(idx.pfLow,0)+' mmHg');
-  $('trendOut').textContent=t.join('\\n');
-  // V/Q suggestion
-  let vq='—';
-  if(isNum(pO2)&&isNum(pCO2)&&isNum(fio2.min)&&isNum(fio2.max)){
-    const mid=(fio2.min+fio2.max)/2;
-    const PA=mid*(760-47)-pCO2/0.8;
-    const aA=pO2/PA;
-    const pfAvg=pO2/mid;
-    if(pfAvg<150 && aA<0.30) vq='Shunt-like physiology (poor O₂ response)';
-    else if(aA<0.40) vq='Likely V/Q mismatch';
-    else if(aA>0.60) vq='Possible hypoventilation/diffusion';
-  }
-  $('vqOut').textContent=vq;
-  // Fail flags
-  let fails=[];
-  if(isNum(mins)&&mins>=30&&mins<=240){
-    if(isNum(baseline.ph)&&isNum(pH)&&pH<=baseline.ph) fails.push('No pH improvement');
-    if(isNum(baseline.pco2mm)&&isNum(pCO2)&&pCO2>=baseline.pco2mm) fails.push('PaCO₂ not improving');
-    if(isNum(baseline.rr)&&isNum(rr)&&rr>=baseline.rr) fails.push('RR not improving');
-  }
-  if(isNum(rr)&&rr>25) fails.push('RR >25');
-  if(isNum(pH)&&pH<7.20) fails.push('Severe acidosis');
-  if(isNum(spo2)){
-    const tgt=$('spo2Target').value;
-    if(tgt==='copd' && spo2<88) fails.push('SpO₂ below COPD target');
-    if(tgt!=='copd' && spo2<90) fails.push('SpO₂ below target');
-  }
-  if(isNum(hac.max)&&hac.max>5) fails.push('HACOR >5');
-  $('failOut').textContent=fails.length?fails.join('\\n'):'No major failing flags';
-  // Adjust suggestions
-  let adj=[];
-  if(isNum(baseline.pco2mm)&&isNum(pCO2)&&pCO2>=baseline.pco2mm){
-    adj.push('Increase IPAP by 2–3 cmH₂O (if on BiPAP)');
-    adj.push('Check mask leak and synchrony');
-  }
-  if(isNum(idx.pfLow)&&idx.pfLow<150){
-    adj.push('Increase EPAP/PEEP by 1–2 cmH₂O and/or FiO₂');
-  }
-  if(isNum(lac)&&lac>=2){
-    adj.push('High lactate: treat cause and maintain compensation');
-  }
-  $('adjustOut').textContent=adj.length?adj.join('\\n'):'No specific adjustment suggestions';
-  // Store B
-  baseline.B={
-    ph:pH,pco2mm:pCO2,pao2mm:pO2,hco3,rr,spo2,hr,gcs,lac,
-    fio2Min:fio2.min,fio2Max:fio2.max,
-    indices:idx, acid, hac, fails, vq, adj,
-    mins, therapy
+  // Store baselineData
+  baselineData = {
+    pH, PaCO2, PaO2, HCO3, RR, SpO2,
+    Na, Cl, Alb, Lac, HR, GCS,
+    fio2Range, indices, acidInfo, agInfo, hacor,
+    context, nivLines, flags,
+    spo2Target
   };
-  updateSummary();
-};
-
-// Update summary
-function updateSummary(){
-  if(!baseline) return;
-  let s=[];
-  s.push('Context: '+baseline.context);
-  s.push('ABG A: pH '+fmt(baseline.ph,2)+', PaCO₂ '+fmt(baseline.pco2mm,1)+' mmHg, PaO₂ '+fmt(baseline.pao2mm,1)+' mmHg, HCO₃ '+fmt(baseline.hco3,1));
-  s.push('FiO₂ A: '+fmt(baseline.fio2Min*100,0)+'–'+fmt(baseline.fio2Max*100,0)+'%');
-  s.push('P/F A: '+fmt(baseline.indices.pfLow,0)+'–'+fmt(baseline.indices.pfHigh,0)+' mmHg');
-  s.push('Plan: '+baseline.plan.join(' '));
-  if(baseline.B){
-    const b=baseline.B;
-    s.push('');
-    s.push('Repeat after '+fmt(b.mins||NaN,0)+' min on '+b.therapy+':');
-    s.push('ABG B: pH '+fmt(b.ph,2)+', PaCO₂ '+fmt(b.pco2mm,1)+' mmHg, PaO₂ '+fmt(b.pao2mm,1)+' mmHg, HCO₃ '+fmt(b.hco3,1));
-    s.push('FiO₂ B: '+(isNum(b.fio2Min)?fmt(b.fio2Min*100,0)+'–'+fmt(b.fio2Max*100,0)+'%':'unknown'));
-    s.push('P/F B: '+fmt(b.indices.pfLow,0)+'–'+fmt(b.indices.pfHigh,0)+' mmHg');
-    s.push('V/Q: '+b.vq);
-    if(b.fails.length) s.push('Flags: '+b.fails.join('; '));
-    else s.push('No major failing flags.');
-    if(b.adj.length) s.push('Adjust: '+b.adj.join(' '));
-  }
-  $('summaryOut').textContent=s.join('\\n');
+  // Reset summary and section B
+  document.getElementById('resultB').textContent = 'Complete Section B inputs and click “Analyse B”.';
+  document.getElementById('flagsB').textContent = '—';
+  document.getElementById('summary').textContent = 'Section A analyzed. Complete Section B and click “Analyse B”.';
+  repeatData = null;
+  // Switch automatically to Section B for convenience
+  showTab('B');
 }
 
-// Copy summary
-$('btnCopySummary').onclick=()=>navigator.clipboard.writeText($('summaryOut').textContent);
-$('btnCopyAll').onclick=()=>{
-  const all=[
-    $('interpretA').textContent,
-    $('planA').textContent,
-    $('flagsA').textContent,
-    $('trendOut').textContent,
-    $('vqOut').textContent,
-    $('failOut').textContent,
-    $('adjustOut').textContent,
-    $('summaryOut').textContent
-  ].join('\\n\\n---\\n\\n');
-  navigator.clipboard.writeText(all);
-};
+/* Analyse Section B: repeat ABG and treatment suggestions */
+function analyseB() {
+  if (!baselineData) {
+    alert('Please analyse Section A first.');
+    return;
+  }
+  // Time on therapy
+  const mins = getNum('minsB');
+  // FiO2 for B: prefer explicit set, else use baseline estimation
+  let fio2B;
+  const setFi = getNum('FiO2_B');
+  if (isFinite(setFi)) {
+    const f = Math.min(1, Math.max(0.21, setFi / 100));
+    fio2B = { min: f, max: f };
+  } else {
+    // fallback to baseline estimation
+    fio2B = baselineData.fio2Range;
+  }
+  // ABG values for B
+  const units = document.getElementById('units').value;
+  const pH  = getNum('pH_B');
+  const PaCO2 = toMMHg(getNum('PaCO2_B'), units);
+  const PaO2  = toMMHg(getNum('PaO2_B'), units);
+  const HCO3 = getNum('HCO3_B');
+  const RR  = getNum('RR_B');
+  const SpO2 = getNum('SpO2_B');
+  // Optional
+  const Lac = getNum('Lac_B');
+  const HR  = getNum('HR_B');
+  const GCS = getNum('GCS_B');
+  const therapy = document.getElementById('therapyB').value;
+  const notes = document.getElementById('notesB').value.trim();
+  // Indices & acid-base for B
+  const indicesB = calcIndices(PaO2, PaCO2, fio2B.min, fio2B.max, SpO2);
+  const acidInfoB = analyseAcidBase(pH, PaCO2, HCO3);
+  const hacorB = calcHACOR(HR, pH, GCS, RR, PaO2, fio2B.min, fio2B.max);
+  // Trend message
+  let trend = [];
+  if (isFinite(mins)) trend.push(`Time on therapy: ${mins.toFixed(0)} minutes`);
+  if (isFinite(baselineData.pH) && isFinite(pH)) trend.push(`pH: ${baselineData.pH.toFixed(2)} → ${pH.toFixed(2)}`);
+  if (isFinite(baselineData.PaCO2) && isFinite(PaCO2)) trend.push(`PaCO₂: ${Math.round(baselineData.PaCO2)} → ${Math.round(PaCO2)} mmHg`);
+  if (isFinite(baselineData.PaO2) && isFinite(PaO2)) trend.push(`PaO₂: ${Math.round(baselineData.PaO2)} → ${Math.round(PaO2)} mmHg`);
+  if (isFinite(baselineData.indices.pfLow) && isFinite(indicesB.pfLow)) trend.push(`P/F: ${baselineData.indices.pfLow.toFixed(0)} → ${indicesB.pfLow.toFixed(0)} mmHg`);
+  // V/Q heuristic
+  let vq;
+  if (isFinite(indicesB.pfLow) && isFinite(indicesB.aAMin)) {
+    const pfAvg = indicesB.pfLow;
+    const aA = indicesB.aAMin; // using min as reference
+    if (pfAvg < 150 && aA < 0.30) vq = 'Shunt-like physiology (poor O₂ response)';
+    else if (aA < 0.40) vq = 'Likely V/Q mismatch';
+    else if (aA > 0.60) vq = 'Possible hypoventilation/diffusion';
+    else vq = 'Indeterminate pattern';
+  } else {
+    vq = 'V/Q analysis not possible (missing FiO₂ or PaO₂)';
+  }
+  // Flags for failing trial
+  let flags = [];
+  // Early response (within first 1–4h)
+  if (isFinite(mins) && mins >= 30 && mins <= 240) {
+    if (isFinite(baselineData.pH) && isFinite(pH) && pH <= baselineData.pH) flags.push('No pH improvement');
+    if (isFinite(baselineData.PaCO2) && isFinite(PaCO2) && PaCO2 >= baselineData.PaCO2) flags.push('PaCO₂ not decreasing');
+    if (isFinite(baselineData.RR) && isFinite(RR) && RR >= baselineData.RR) flags.push('RR not improving');
+  }
+  // Simple triggers
+  if (isFinite(RR) && RR > 25) flags.push('RR > 25');
+  if (isFinite(pH) && pH < 7.20) flags.push('pH < 7.20');
+  // SpO2 below target
+  const tgt = document.getElementById('spo2Target').value;
+  if (isFinite(SpO2)) {
+    if (tgt === 'copd' && SpO2 < 88) flags.push('SpO₂ below target (COPD)');
+    if (tgt !== 'copd' && SpO2 < 90) flags.push('SpO₂ below target');
+  }
+  // HACOR risk
+  if (hacorB && isFinite(hacorB.max) && hacorB.max > 5) flags.push('HACOR > 5 (high failure risk)');
+  // Build treatment suggestions
+  let suggestions = [];
+  // If PaCO2 not improving: raise IPAP
+  if (isFinite(baselineData.PaCO2) && isFinite(PaCO2) && PaCO2 >= baselineData.PaCO2 && therapy === 'niv') {
+    suggestions.push('Increase IPAP by 2–3 cmH₂O to improve ventilation.');
+  }
+  // If P/F remains low: raise EPAP and/or FiO2
+  if (isFinite(indicesB.pfLow) && indicesB.pfLow < 150) {
+    suggestions.push('Raise EPAP/PEEP by 1–2 cmH₂O and/or increase FiO₂.');
+    suggestions.push('Assess for atelectasis, pneumonia or pulmonary oedema.');
+  }
+  // If lactate high
+  if (isFinite(Lac) && Lac >= 2) {
+    suggestions.push('High lactate → treat underlying cause (sepsis/shock). Maintain compensatory ventilation.');
+  }
+  // If context is lactic, emphasise cause treatment
+  if (baselineData.context === 'lactic') {
+    suggestions.push('Continue treating metabolic acidosis cause and ensure adequate volume/oxygen delivery.');
+  }
+  // If no specific suggestions
+  if (!suggestions.length) {
+    suggestions.push('No specific adjustments triggered. Continue monitoring and titrating based on trends and clinical judgement.');
+  }
+
+  // Fill results
+  let resultLines = [];
+  resultLines.push('Repeat ABG Analysis:');
+  if (isFinite(mins)) resultLines.push(`• Time on therapy: ${mins.toFixed(0)} min`);
+  if (isFinite(fio2B.min)) {
+    resultLines.push(`• FiO₂: ${(fio2B.min * 100).toFixed(0)}–${(fio2B.max * 100).toFixed(0)}%`);
+  }
+  resultLines.push(`• pH: ${isFinite(pH) ? pH.toFixed(2) : '—'} | PaCO₂: ${isFinite(PaCO2) ? PaCO2.toFixed(1)+' mmHg' : '—'} | PaO₂: ${isFinite(PaO2) ? PaO2.toFixed(1)+' mmHg' : '—'}`);
+  if (isFinite(indicesB.pfLow)) {
+    resultLines.push(`• P/F: ${indicesB.pfLow.toFixed(0)}–${indicesB.pfHigh.toFixed(0)} mmHg`);
+  }
+  resultLines.push('');
+  resultLines.push('V/Q analysis: ' + vq);
+  resultLines.push('');
+  resultLines.push('Acid-base:');
+  resultLines.push(acidInfoB.text);
+  resultLines.push('');
+  resultLines.push('Treatment suggestions:');
+  suggestions.forEach(x => resultLines.push('• ' + x));
+  document.getElementById('resultB').textContent = resultLines.join('\n');
+  document.getElementById('flagsB').textContent = flags.length ? flags.join('\n') : '—';
+
+  repeatData = {
+    mins, pH, PaCO2, PaO2, HCO3, RR, SpO2, Lac, HR, GCS,
+    fio2Range: fio2B, indices: indicesB, acidInfo: acidInfoB,
+    hacor: hacorB, therapy, notes, vq, flags, suggestions
+  };
+  // Update summary
+  updateSummary();
+  // Switch to summary tab
+  showTab('Sum');
+}
+
+/* Build summary after A/B analyses */
+function updateSummary() {
+  if (!baselineData) {
+    document.getElementById('summary').textContent = 'Perform Section A to start.';
+    return;
+  }
+  let sum = [];
+  sum.push('Initial Assessment:');
+  sum.push(`• Context: ${baselineData.context}`);
+  sum.push(`• pH ${baselineData.pH?.toFixed(2) || '—'}, PaCO₂ ${baselineData.PaCO2?.toFixed(1) || '—'}, PaO₂ ${baselineData.PaO2?.toFixed(1) || '—'}, HCO₃ ${baselineData.HCO3?.toFixed(1) || '—'}`);
+  sum.push(`• FiO₂ A: ${(baselineData.fio2Range.min * 100).toFixed(0)}–${(baselineData.fio2Range.max * 100).toFixed(0)}%`);
+  sum.push(`• P/F A: ${baselineData.indices.pfLow?.toFixed(0)}–${baselineData.indices.pfHigh?.toFixed(0)} mmHg`);
+  sum.push('');
+  sum.push('Suggested NIV & therapy plan:');
+  baselineData.nivLines.forEach(line => sum.push('• ' + line));
+  sum.push('');
+  sum.push('Escalation flags (A):');
+  sum.push(baselineData.flags.length ? baselineData.flags.join('; ') : 'None');
+  if (repeatData) {
+    sum.push('');
+    sum.push('Repeat & Response:');
+    if (isFinite(repeatData.mins)) sum.push(`• After ${repeatData.mins.toFixed(0)} min on ${repeatData.therapy}`);
+    sum.push(`• pH ${isFinite(repeatData.pH) ? repeatData.pH.toFixed(2) : '—'}, PaCO₂ ${isFinite(repeatData.PaCO2) ? repeatData.PaCO2.toFixed(1) + ' mmHg' : '—'}, PaO₂ ${isFinite(repeatData.PaO2) ? repeatData.PaO2.toFixed(1) + ' mmHg' : '—'}`);
+    sum.push(`• FiO₂ B: ${isFinite(repeatData.fio2Range.min) ? (repeatData.fio2Range.min * 100).toFixed(0) + '–' + (repeatData.fio2Range.max * 100).toFixed(0) + '%' : 'unknown'}`);
+    sum.push(`• P/F B: ${isFinite(repeatData.indices.pfLow) ? repeatData.indices.pfLow.toFixed(0) + '–' + repeatData.indices.pfHigh.toFixed(0) : '—'}`);
+    sum.push(`• V/Q: ${repeatData.vq}`);
+    sum.push('');
+    sum.push('Treatment suggestions:');
+    repeatData.suggestions.forEach(item => sum.push('• ' + item));
+    sum.push('');
+    sum.push('Escalation flags (B):');
+    sum.push(repeatData.flags.length ? repeatData.flags.join('; ') : 'None');
+  } else {
+    sum.push('');
+    sum.push('Perform repeat analysis for further guidance.');
+  }
+  document.getElementById('summary').textContent = sum.join('\n');
+}
+
+/* Copy summary to clipboard */
+function copySummary() {
+  const text = document.getElementById('summary').textContent;
+  navigator.clipboard.writeText(text).then(() => alert('Summary copied to clipboard'));
+}
 </script>
 </body>
 </html>
