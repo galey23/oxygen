@@ -1,12 +1,12 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>ABG + O₂ → Interpretation + NIV Suggestions + Trend/VQ</title>
   <style>
-    /* “Liquid glass” inspired UI (Apple-ish): translucent layers, blur, soft highlights */
-    :root{
+    /* Apple-like liquid glass aesthetic */
+    :root {
       --bg0:#06070b;
       --bg1:#070914;
       --glass: rgba(255,255,255,.08);
@@ -21,8 +21,6 @@
       --good: rgba(116,255,192,.95);
       --warn: rgba(255,210,125,.95);
       --bad: rgba(255,110,110,.95);
-      --shadow: 0 18px 60px rgba(0,0,0,.55);
-      --shadow2: 0 10px 24px rgba(0,0,0,.35);
       --radius: 22px;
       --radius2: 16px;
       --pad: 16px;
@@ -31,7 +29,7 @@
       --sans: ui-sans-serif, system-ui, -apple-system, "SF Pro Display", "SF Pro Text", Segoe UI, Roboto, Helvetica, Arial, sans-serif;
     }
     *{box-sizing:border-box}
-    body{
+    body {
       margin:0;
       font-family: var(--sans);
       color: var(--text);
@@ -40,162 +38,147 @@
         radial-gradient(1000px 650px at 90% 12%, rgba(170,120,255,.16), transparent 55%),
         radial-gradient(900px 600px at 20% 90%, rgba(116,255,192,.12), transparent 55%),
         linear-gradient(180deg, var(--bg1), var(--bg0));
-      min-height: 100vh;
+      min-height:100vh;
     }
-    .wrap{max-width:1180px; margin:0 auto; padding:22px;}
+    .wrap{max-width:1180px;margin:0 auto;padding:22px;}
     .topbar{
-      position: sticky; top:0; z-index:20;
-      padding: 14px 0 10px;
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      background: linear-gradient(180deg, rgba(6,7,11,.85), rgba(6,7,11,.35));
-      border-bottom: 1px solid rgba(255,255,255,.08);
+      position:sticky;top:0;z-index:20;padding:14px 0 10px;
+      backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+      background:linear-gradient(180deg,rgba(6,7,11,.85),rgba(6,7,11,.35));
+      border-bottom:1px solid rgba(255,255,255,.08);
     }
-    .titleRow{display:flex; gap:14px; align-items:flex-end; justify-content:space-between; flex-wrap:wrap;}
-    h1{margin:0; font-size: 18px; letter-spacing:.2px;}
-    .sub{margin:6px 0 0; color: var(--muted); font-size: 12px;}
-    .badgeRow{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+    .titleRow{display:flex;gap:14px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;}
+    h1{margin:0;font-size:18px;letter-spacing:.2px;}
+    .sub{margin:6px 0 0;color:var(--muted);font-size:12px;}
+    .badgeRow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
     .pill{
-      display:inline-flex; align-items:center; gap:8px;
-      padding:7px 10px;
-      border-radius:999px;
-      border: 1px solid var(--stroke2);
-      background: rgba(255,255,255,.06);
-      box-shadow: 0 8px 22px rgba(0,0,0,.22);
-      font-size: 12px;
-      color: var(--text);
+      display:inline-flex;align-items:center;gap:8px;
+      padding:7px 10px;border-radius:999px;
+      border:1px solid var(--stroke2);
+      background:rgba(255,255,255,.06);
+      box-shadow:0 8px 22px rgba(0,0,0,.22);
+      font-size:12px;
+      color:var(--text);
     }
-    .dot{width:8px; height:8px; border-radius:99px; background: var(--accent);}
-    .dot.good{background: var(--good);}
-    .dot.warn{background: var(--warn);}
-    .dot.bad{background: var(--bad);}
+    .dot{width:8px;height:8px;border-radius:99px;background:var(--accent);}
+    .dot.good{background:var(--good);}
+    .dot.warn{background:var(--warn);}
+    .dot.bad{background:var(--bad);}
     .tabs{
-      display:flex; gap:10px; flex-wrap:wrap;
-      margin-top: 12px;
+      display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;
     }
     .tab{
-      cursor:pointer; user-select:none;
-      padding:10px 12px;
-      border-radius:999px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      color: var(--text);
-      font-weight: 650;
-      box-shadow: var(--shadow2);
-      transition: transform .15s ease, background .2s ease, border-color .2s ease;
+      cursor:pointer;user-select:none;
+      padding:10px 12px;border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      font-weight:650;
+      box-shadow:0 10px 26px rgba(0,0,0,.35);
+      transition:transform .15s ease,background .2s ease,border-color .2s ease;
     }
-    .tab:hover{transform: translateY(-1px);}
+    .tab:hover{transform:translateY(-1px);}
     .tab.active{
-      background: linear-gradient(180deg, rgba(110,198,255,.18), rgba(255,255,255,.06));
-      border-color: rgba(110,198,255,.35);
+      background:linear-gradient(180deg,rgba(110,198,255,.18),rgba(255,255,255,.06));
+      border-color:rgba(110,198,255,.35);
     }
-
-    .grid{display:grid; grid-template-columns: 1.15fr 1fr; gap:14px; margin-top:14px;}
-    @media (max-width: 980px){ .grid{grid-template-columns:1fr;} .topbar{position:static;} }
-
+    .grid{display:grid;grid-template-columns:1.15fr 1fr;gap:14px;margin-top:14px;}
+    @media (max-width:980px){.grid{grid-template-columns:1fr;}.topbar{position:static;}}
     .card{
-      border-radius: var(--radius);
-      border: 1px solid var(--stroke2);
-      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      padding: var(--pad);
+      border-radius:var(--radius);
+      border:1px solid var(--stroke2);
+      background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.05));
+      box-shadow:0 18px 60px rgba(0,0,0,.55);
+      backdrop-filter:blur(18px);
+      -webkit-backdrop-filter:blur(18px);
+      padding:var(--pad);
       overflow:hidden;
       position:relative;
     }
     .card:before{
       content:"";
-      position:absolute; inset:-1px;
-      border-radius: var(--radius);
-      background: radial-gradient(900px 220px at 20% 0%, rgba(255,255,255,.12), transparent 60%);
+      position:absolute;inset:-1px;
+      border-radius:var(--radius);
+      background:radial-gradient(900px 220px at 20% 0%,rgba(255,255,255,.12),transparent 60%);
       pointer-events:none;
-      mix-blend-mode: screen;
+      mix-blend-mode:screen;
       opacity:.9;
     }
-    .card h2{margin:0 0 10px; font-size: 14px; color: rgba(255,255,255,.90); letter-spacing:.2px;}
-    .muted{color: var(--muted); font-size: 12px; line-height:1.45;}
-    .small{color: var(--faint); font-size: 11px; line-height:1.45;}
-    .row{display:grid; grid-template-columns: 1fr 1fr; gap:12px;}
-    .row3{display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px;}
-    @media (max-width: 680px){ .row,.row3{grid-template-columns:1fr;} }
-
-    label{display:block; margin:10px 0 6px; font-size:12px; color: rgba(255,255,255,.78);}
-    input, select, textarea{
+    .card h2{margin:0 0 10px;font-size:14px;color:rgba(255,255,255,.90);letter-spacing:.2px;}
+    .muted{color:var(--muted);font-size:12px;line-height:1.45;}
+    .small{color:var(--faint);font-size:11px;line-height:1.45;}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+    @media (max-width:680px){.row,.row3{grid-template-columns:1fr;}}
+    label{display:block;margin:10px 0 6px;font-size:12px;color:rgba(255,255,255,.78);}
+    input,select,textarea{
       width:100%;
-      padding: 11px 12px;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(0,0,0,.22);
-      color: var(--text);
-      outline: none;
+      padding:11px 12px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(0,0,0,.22);
+      color:var(--text);
+      outline:none;
       box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
     }
-    textarea{min-height:74px; resize:vertical;}
-    input::placeholder, textarea::placeholder{color: rgba(255,255,255,.35);}
-
-    .btnRow{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;}
+    textarea{min-height:74px;resize:vertical;}
+    input::placeholder,textarea::placeholder{color:rgba(255,255,255,.35);}
+    .btnRow{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;}
     button{
-      border: 1px solid rgba(255,255,255,.14);
-      background: linear-gradient(180deg, rgba(110,198,255,.85), rgba(110,198,255,.55));
-      color: rgba(0,0,0,.86);
-      font-weight: 800;
-      padding: 10px 12px;
-      border-radius: 14px;
-      cursor: pointer;
-      box-shadow: 0 14px 34px rgba(110,198,255,.18), 0 10px 26px rgba(0,0,0,.35);
-      transition: transform .15s ease, filter .2s ease;
+      border:1px solid rgba(255,255,255,.14);
+      background:linear-gradient(180deg,rgba(110,198,255,.85),rgba(110,198,255,.55));
+      color:rgba(0,0,0,.86);
+      font-weight:800;
+      padding:10px 12px;
+      border-radius:14px;
+      cursor:pointer;
+      box-shadow:0 14px 34px rgba(110,198,255,.18), 0 10px 26px rgba(0,0,0,.35);
+      transition:transform .15s ease,filter .2s ease;
     }
-    button:hover{transform: translateY(-1px); filter: brightness(1.02);}
-    button:active{transform: translateY(0px); filter: brightness(.98);}
+    button:hover{transform:translateY(-1px);filter:brightness(1.02);}
+    button:active{transform:translateY(0);filter:brightness(.98);}
     button.secondary{
-      background: rgba(255,255,255,.08);
-      color: var(--text);
-      border-color: rgba(255,255,255,.14);
-      box-shadow: var(--shadow2);
+      background:rgba(255,255,255,.08);
+      color:var(--text);
+      border-color:rgba(255,255,255,.14);
+      box-shadow:0 10px 26px rgba(0,0,0,.35);
     }
     button.danger{
-      background: linear-gradient(180deg, rgba(255,110,110,.95), rgba(255,110,110,.55));
-      color: rgba(0,0,0,.86);
+      background:linear-gradient(180deg,rgba(255,110,110,.95),rgba(255,110,110,.55));
+      color:rgba(0,0,0,.86);
     }
-
-    .divider{height:1px; background: rgba(255,255,255,.10); margin: 12px 0;}
+    .divider{height:1px;background:rgba(255,255,255,.10);margin:12px 0;}
     .panel{
-      border-radius: var(--radius2);
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.22);
-      padding: 12px;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+      border-radius:var(--radius2);
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(0,0,0,.22);
+      padding:12px;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
     }
-    .panel.good{border-color: rgba(116,255,192,.25); background: rgba(116,255,192,.08);}
-    .panel.warn{border-color: rgba(255,210,125,.25); background: rgba(255,210,125,.08);}
-    .panel.bad{border-color: rgba(255,110,110,.25); background: rgba(255,110,110,.08);}
-    .mono{font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: pre-wrap; line-height:1.45; font-size: 13px;}
-    .chips{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;}
+    .panel.good{border-color:rgba(116,255,192,.25);background:rgba(116,255,192,.08);}
+    .panel.warn{border-color:rgba(255,210,125,.25);background:rgba(255,210,125,.08);}
+    .panel.bad{border-color:rgba(255,110,110,.25);background:rgba(255,110,110,.08);}
+    .mono{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:pre-wrap;line-height:1.45;font-size:13px;}
+    .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
     .chip{
-      padding:7px 10px;
-      border-radius:999px;
+      padding:7px 10px;border-radius:999px;
       border:1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      font-size:12px;
-      color: var(--text);
+      background:rgba(255,255,255,.06);
+      font-size:12px;color:var(--text);
     }
-    .chip.good{border-color: rgba(116,255,192,.25); color: var(--good);}
-    .chip.warn{border-color: rgba(255,210,125,.25); color: var(--warn);}
-    .chip.bad{border-color: rgba(255,110,110,.25); color: var(--bad);}
-
+    .chip.good{border-color:rgba(116,255,192,.25);color:var(--good);}
+    .chip.warn{border-color:rgba(255,210,125,.25);color:var(--warn);}
+    .chip.bad{border-color:rgba(255,110,110,.25);color:var(--bad);}
     .hidden{display:none !important;}
-    .rightSticky{position:sticky; top:140px;}
-    @media (max-width:980px){ .rightSticky{position:static;} }
-
+    .rightSticky{position:sticky;top:140px;}
+    @media (max-width:980px){.rightSticky{position:static;}}
     details{
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.05);
-      padding: 10px 12px;
-      margin-top: 10px;
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.05);
+      padding:10px 12px;margin-top:10px;
     }
-    summary{cursor:pointer; font-weight:800; color: rgba(255,255,255,.88);}
+    summary{cursor:pointer;font-weight:800;color:rgba(255,255,255,.88);}
   </style>
 </head>
 <body>
@@ -210,23 +193,20 @@
           <span class="pill"><span class="dot"></span><span id="badgeText">Ready</span></span>
         </div>
       </div>
-
       <div class="tabs">
-        <div class="tab active" id="tabA">Step A · Baseline</div>
-        <div class="tab" id="tabB">Step B · Repeat / Trial</div>
+        <div class="tab active" id="tabA">Step A · Baseline</div>
+        <div class="tab" id="tabB">Step B · Repeat / Trial</div>
         <div class="tab" id="tabS">Summary</div>
       </div>
     </div>
   </div>
 
   <div class="wrap">
-
     <!-- STEP A -->
     <div id="panelA">
       <div class="grid">
         <div class="card">
-          <h2>Baseline input (ABG A + oxygen device at time of sample)</h2>
-
+          <h2>Baseline input (ABG A + oxygen device at sample)</h2>
           <div class="row">
             <div>
               <label>Context</label>
@@ -235,22 +215,21 @@
                 <option value="copd">AECOPD / CO₂ retention risk</option>
                 <option value="cpo">Cardiogenic pulmonary oedema</option>
                 <option value="ohs">Obesity hypoventilation / NMD / chest-wall</option>
-                <option value="hypox">De novo hypoxemic failure (pneumonia/ARDS) — caution</option>
+                <option value="hypox">De novo hypoxemic failure (pneumonia/ARDS)</option>
                 <option value="lactic">Predominantly lactic metabolic acidosis</option>
-                <option value="asthma">Acute severe asthma (NIV selective)</option>
+                <option value="asthma">Acute severe asthma</option>
               </select>
             </div>
             <div>
               <label>SpO₂ target</label>
               <select id="spo2Target">
                 <option value="normal" selected>92–96% (most adults)</option>
-                <option value="copd">88–92% (COPD/chronic CO₂ risk)</option>
-                <option value="custom">Custom (type below)</option>
+                <option value="copd">88–92% (CO₂-retention risk)</option>
+                <option value="custom">Custom</option>
               </select>
-              <input id="spo2Custom" class="hidden" placeholder="e.g., 90–94" />
+              <input id="spo2Custom" class="hidden" placeholder="e.g., 90–94"/>
             </div>
           </div>
-
           <div class="row">
             <div>
               <label>ABG units</label>
@@ -260,7 +239,7 @@
               </select>
             </div>
             <div>
-              <label>Device used for ABG A</label>
+              <label>Device used for ABG A</label>
               <select id="devA">
                 <option value="ra">Room air</option>
                 <option value="nc" selected>Nasal cannula</option>
@@ -272,104 +251,86 @@
               </select>
             </div>
           </div>
-
           <div class="row">
             <div>
               <label>Flow (L/min) OR set FiO₂ (%)</label>
-              <input id="flowOrFio2A" type="number" step="0.1" placeholder="e.g., 2 (L/min) or 40 (FiO₂%)" />
-              <div class="small">If you know actual FiO₂, enter percent (≥22) for best accuracy.</div>
+              <input id="flowOrFio2A" type="number" step="0.1" placeholder="2 (L/min) or 40 (FiO₂%)"/>
+              <div class="small">≥22 means FiO₂ percent; otherwise treat as L/min.</div>
             </div>
             <div>
               <label>Optional device notes</label>
-              <input id="devNotesA" placeholder="e.g., mouth breathing, poor seal, etc."/>
+              <input id="devNotesA" placeholder="e.g., mouth breathing, poor seal"/>
             </div>
           </div>
-
           <div class="row3">
             <div><label>pH</label><input id="phA" type="number" step="0.01" placeholder="7.28"/></div>
-            <div><label>PaCO₂</label><input id="pco2A" type="number" step="0.1" placeholder="mmHg or kPa"/></div>
-            <div><label>PaO₂</label><input id="po2A" type="number" step="0.1" placeholder="mmHg or kPa"/></div>
+            <div><label>PaCO₂</label><input id="pco2A" type="number" step="0.1" placeholder="PaCO₂"/></div>
+            <div><label>PaO₂</label><input id="po2A" type="number" step="0.1" placeholder="PaO₂"/></div>
           </div>
-
           <div class="row3">
-            <div><label>HCO₃⁻ (mmol/L)</label><input id="hco3A" type="number" step="0.1" placeholder="24"/></div>
-            <div><label>RR (optional)</label><input id="rrA" type="number" step="1" placeholder="e.g., 30"/></div>
-            <div><label>SpO₂ (optional)</label><input id="spo2A" type="number" step="1" placeholder="e.g., 88"/></div>
+            <div><label>HCO₃⁻</label><input id="hco3A" type="number" step="0.1" placeholder="24"/></div>
+            <div><label>RR</label><input id="rrA" type="number" step="1" placeholder="Resp Rate"/></div>
+            <div><label>SpO₂</label><input id="spo2A" type="number" step="1" placeholder="SpO₂"/></div>
           </div>
-
           <details>
-            <summary>Optional labs for more rules (anion gap / delta ratio / lactate) + HACOR</summary>
+            <summary>Optional labs (anion gap, lactate, HACOR)</summary>
             <div class="row3">
-              <div><label>Na⁺</label><input id="naA" type="number" step="0.1" placeholder="140"/></div>
-              <div><label>Cl⁻</label><input id="clA" type="number" step="0.1" placeholder="102"/></div>
-              <div><label>Albumin (g/dL)</label><input id="albA" type="number" step="0.1" placeholder="4.0"/></div>
+              <div><label>Na⁺</label><input id="naA" type="number" step="0.1" placeholder="Na"/></div>
+              <div><label>Cl⁻</label><input id="clA" type="number" step="0.1" placeholder="Cl"/></div>
+              <div><label>Albumin (g/dL)</label><input id="albA" type="number" step="0.1" placeholder="Alb"/></div>
             </div>
             <div class="row3">
-              <div><label>Lactate</label><input id="lacA" type="number" step="0.1" placeholder="e.g., 5.1"/></div>
-              <div><label>HR (HACOR)</label><input id="hrA" type="number" step="1" placeholder="e.g., 118"/></div>
-              <div><label>GCS (HACOR)</label><input id="gcsA" type="number" step="1" placeholder="15"/></div>
+              <div><label>Lactate</label><input id="lacA" type="number" step="0.1" placeholder="Lactate"/></div>
+              <div><label>HR (HACOR)</label><input id="hrA" type="number" step="1" placeholder="HR"/></div>
+              <div><label>GCS (HACOR)</label><input id="gcsA" type="number" step="1" placeholder="GCS"/></div>
             </div>
-            <div class="small">HACOR uses HR, pH, GCS, RR, and PaO₂/FiO₂. If FiO₂ is estimated, HACOR is shown as a range.</div>
+            <div class="small">HACOR uses HR, pH, GCS, RR, and PaO₂/FiO₂. If FiO₂ is estimated, HACOR shows a range.</div>
           </details>
-
           <div class="btnRow">
-            <button id="btnAnalyzeA">Analyze A</button>
+            <button id="btnAnalyzeA">Analyze A</button>
             <button class="secondary" id="btnExampleA">Fill example</button>
-            <button class="secondary" id="btnClearA">Clear A</button>
+            <button class="secondary" id="btnClearA">Clear A</button>
           </div>
-
           <div class="divider"></div>
-
           <div class="panel" id="fio2PanelA">
-            <div class="pill"><span class="dot"></span>Estimated FiO₂ (A)</div>
+            <div class="pill"><span class="dot"></span>Estimated FiO₂ (A)</div>
             <div class="mono" id="fio2OutA">—</div>
             <div class="small" id="fio2WhyA"></div>
           </div>
-
         </div>
-
         <div class="card rightSticky">
           <h2>Baseline outputs</h2>
-
           <div class="panel" id="panelInterpretA">
-            <div class="pill"><span class="dot"></span>Interpretation (A)</div>
-            <div class="mono" id="interpretA">Enter values → Analyze A.</div>
+            <div class="pill"><span class="dot"></span>Interpretation (A)</div>
+            <div class="mono" id="interpretA">Enter values → Analyze A.</div>
           </div>
-
           <div class="divider"></div>
-
           <div class="panel" id="panelPlanA">
-            <div class="pill"><span class="dot"></span>Suggested therapy + NIV ranges (A)</div>
+            <div class="pill"><span class="dot"></span>Suggested therapy + NIV ranges (A)</div>
             <div class="mono" id="planA">—</div>
           </div>
-
           <div class="divider"></div>
-
           <div class="panel bad" id="panelFailA">
-            <div class="pill"><span class="dot bad"></span>Escalation / “don’t persist” flags (A)</div>
+            <div class="pill"><span class="dot bad"></span>Escalation / don’t persist flags (A)</div>
             <div class="mono" id="flagsA">—</div>
           </div>
-
           <div class="chips" id="chipsA"></div>
-
         </div>
       </div>
     </div>
-
     <!-- STEP B -->
     <div id="panelB" class="hidden">
       <div class="grid">
         <div class="card">
-          <h2>Repeat (ABG B) + time on therapy + settings used</h2>
-          <div class="muted">Run “Analyze A” first; Step B compares response and checks for failing NIV trial.</div>
-
+          <h2>Repeat (ABG B) + time on therapy + settings used</h2>
+          <div class="muted">Run “Analyze A” first; Step B compares response and checks for failing NIV trial.</div>
           <div class="row">
             <div>
-              <label>Minutes on current therapy before ABG B</label>
+              <label>Minutes on current therapy</label>
               <input id="minsB" type="number" step="1" placeholder="e.g., 60"/>
             </div>
             <div>
-              <label>Therapy in place during ABG B</label>
+              <label>Therapy in place</label>
               <select id="therapyB">
                 <option value="o2" selected>O₂ only</option>
                 <option value="hfnc">HFNC</option>
@@ -379,44 +340,39 @@
               </select>
             </div>
           </div>
-
           <div class="row">
             <div>
-              <label>FiO₂ set (%) (preferred)</label>
-              <input id="fio2SetB" type="number" step="0.1" placeholder="e.g., 35"/>
-              <div class="small">If you don’t enter this, the app may fall back to an estimate (less reliable).</div>
+              <label>FiO₂ set (%)</label>
+              <input id="fio2SetB" type="number" step="0.1" placeholder="FiO₂ (B)"/>
+              <div class="small">Prefer to set this; else the app will estimate.</div>
             </div>
             <div>
-              <label>NIV settings (optional but helpful)</label>
-              <input id="nivSettingsB" placeholder="e.g., BiPAP 14/5, backup 14; or CPAP 8"/>
+              <label>NIV settings (opt.)</label>
+              <input id="nivSettingsB" placeholder="e.g., BiPAP 14/5, backup 14"/>
             </div>
           </div>
-
           <div class="row3">
-            <div><label>pH (B)</label><input id="phB" type="number" step="0.01" placeholder="7.32"/></div>
-            <div><label>PaCO₂ (B)</label><input id="pco2B" type="number" step="0.1" placeholder="mmHg or kPa"/></div>
-            <div><label>PaO₂ (B)</label><input id="po2B" type="number" step="0.1" placeholder="mmHg or kPa"/></div>
+            <div><label>pH (B)</label><input id="phB" type="number" step="0.01" placeholder="pH"/></div>
+            <div><label>PaCO₂ (B)</label><input id="pco2B" type="number" step="0.1" placeholder="PaCO₂"/></div>
+            <div><label>PaO₂ (B)</label><input id="po2B" type="number" step="0.1" placeholder="PaO₂"/></div>
           </div>
-
           <div class="row3">
-            <div><label>HCO₃⁻ (B)</label><input id="hco3B" type="number" step="0.1" placeholder="24"/></div>
-            <div><label>RR (B) (optional)</label><input id="rrB" type="number" step="1" placeholder="e.g., 24"/></div>
-            <div><label>SpO₂ (B) (optional)</label><input id="spo2B" type="number" step="1" placeholder="e.g., 90"/></div>
+            <div><label>HCO₃⁻ (B)</label><input id="hco3B" type="number" step="0.1" placeholder="HCO₃"/></div>
+            <div><label>RR (B)</label><input id="rrB" type="number" step="1" placeholder="RR"/></div>
+            <div><label>SpO₂ (B)</label><input id="spo2B" type="number" step="1" placeholder="SpO₂"/></div>
           </div>
-
           <details>
-            <summary>Optional: lactate + HACOR components (B)</summary>
+            <summary>Optional: lactate + HACOR inputs (B)</summary>
             <div class="row3">
-              <div><label>Lactate (B)</label><input id="lacB" type="number" step="0.1" placeholder="e.g., 3.0"/></div>
-              <div><label>HR (B)</label><input id="hrB" type="number" step="1" placeholder="e.g., 110"/></div>
-              <div><label>GCS (B)</label><input id="gcsB" type="number" step="1" placeholder="15"/></div>
+              <div><label>Lactate (B)</label><input id="lacB" type="number" step="0.1" placeholder="Lactate"/></div>
+              <div><label>HR (B)</label><input id="hrB" type="number" step="1" placeholder="HR"/></div>
+              <div><label>GCS (B)</label><input id="gcsB" type="number" step="1" placeholder="GCS"/></div>
             </div>
           </details>
-
           <div class="row">
             <div>
-              <label>Notes / observed response (optional)</label>
-              <textarea id="notesB" placeholder="e.g., reduced WOB; still drowsy; leaks; hypotensive; etc."></textarea>
+              <label>Notes (optional)</label>
+              <textarea id="notesB" placeholder="e.g., reduced WOB; still drowsy; leaks"></textarea>
             </div>
             <div class="panel">
               <div class="pill"><span class="dot"></span>Estimated FiO₂ (B)</div>
@@ -424,56 +380,45 @@
               <div class="small" id="fio2WhyB"></div>
             </div>
           </div>
-
           <div class="btnRow">
-            <button id="btnAnalyzeB">Analyze B</button>
+            <button id="btnAnalyzeB">Analyze B</button>
             <button class="secondary" id="btnExampleB">Fill example</button>
-            <button class="secondary" id="btnClearB">Clear B</button>
+            <button class="secondary" id="btnClearB">Clear B</button>
           </div>
         </div>
-
         <div class="card rightSticky">
           <h2>Trial response outputs</h2>
-
           <div class="panel" id="panelTrend">
-            <div class="pill"><span class="dot"></span>Trend A → B</div>
-            <div class="mono" id="trendOut">Run Analyze A then Analyze B.</div>
+            <div class="pill"><span class="dot"></span>Trend A → B</div>
+            <div class="mono" id="trendOut">Run Analyze A then Analyze B.</div>
           </div>
-
           <div class="divider"></div>
-
           <div class="panel" id="panelVQ">
-            <div class="pill"><span class="dot"></span>V/Q vs shunt-like suggestion (heuristic)</div>
+            <div class="pill"><span class="dot"></span>V/Q vs shunt-like suggestion</div>
             <div class="mono" id="vqOut">—</div>
           </div>
-
           <div class="divider"></div>
-
           <div class="panel bad" id="panelFailB">
-            <div class="pill"><span class="dot bad"></span>Failing NIV trial check (evidence-based heuristic)</div>
+            <div class="pill"><span class="dot bad"></span>Failing NIV trial check</div>
             <div class="mono" id="failOut">—</div>
           </div>
-
           <div class="divider"></div>
-
           <div class="panel" id="panelAdjust">
             <div class="pill"><span class="dot"></span>Suggested adjustments + rationale</div>
             <div class="mono" id="adjustOut">—</div>
           </div>
-
         </div>
       </div>
     </div>
-
     <!-- SUMMARY -->
     <div id="panelS" class="hidden">
       <div class="grid">
         <div class="card">
           <h2>Auto-generated clinical summary</h2>
-          <div class="muted">Designed to be copy-pastable into handover notes: assessment → intervention → rationale → response → next step.</div>
+          <div class="muted">Copy-paste into handover: assessment → intervention → rationale → response → next step.</div>
           <div class="divider"></div>
           <div class="panel">
-            <div class="mono" id="summaryOut">Run Analyze A (and optionally Analyze B) to populate this.</div>
+            <div class="mono" id="summaryOut">Run Analyze A (and optionally B) to populate this.</div>
           </div>
           <div class="btnRow">
             <button class="secondary" id="btnCopySummary">Copy summary</button>
@@ -481,270 +426,411 @@
           </div>
         </div>
         <div class="card rightSticky">
-          <h2>How “failing NIV trial” is judged here</h2>
+          <h2>“Failing NIV trial” logic used</h2>
           <div class="muted">
-            This app uses a conservative combination of:
+            This app uses:
             <ul>
-              <li><b>HACOR score</b> (range if FiO₂ is estimated). A cutoff <b>&gt;5</b> suggests high NIV failure risk.</li>
-              <li><b>Early physiologic response</b>: within ~1–4h, lack of improvement in pH/RR or worsening CO₂ is concerning.</li>
-              <li>Simple escalation triggers: reduced consciousness, persistent tachypnea, inability to maintain target SpO₂, severe acidemia.</li>
+              <li><strong>HACOR score</strong> (range if FiO₂ is estimated). HACOR &gt; 5 suggests high NIV failure risk.</li>
+              <li><strong>Early physiologic response</strong>: within 1–4 h, pH and RR should improve if NIV works; persistent acidemia or tachypnea warn of failure.</li>
+              <li><strong>Escalation triggers</strong>: reduced consciousness, RR &gt; 25, failure to maintain target SpO₂, severe acidemia.</li>
             </ul>
-            This is a decision-support heuristic—not a substitute for ICU/senior review.
+            These heuristics help prompt senior/ICU review; they don’t replace it.
           </div>
         </div>
       </div>
     </div>
-
   </div>
 
 <script>
-/* ===================== Utilities ===================== */
+/* ======== JavaScript logic to drive the app ======== */
 const mmHgPerKPa = 7.50062;
-const isNum = (v) => Number.isFinite(v);
-const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
-const $ = (id) => document.getElementById(id);
-const valNum = (id) => {
-  const v = $(id).value;
-  if (v === "" || v === null || v === undefined) return NaN;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : NaN;
+const isNum=v=>Number.isFinite(v);
+const clamp=(x,lo,hi)=>Math.min(hi,Math.max(lo,x));
+const $=id=>document.getElementById(id);
+const fmt=(n,d=2)=>isNum(n)?n.toFixed(d):'—';
+const toMMHg=(v,u)=>u==='kpa'?v*mmHgPerKPa:v;
+
+let baseline=null;
+
+// Tab switching
+function switchTab(tab){
+  $('panelA').classList.toggle('hidden',tab!=='A');
+  $('panelB').classList.toggle('hidden',tab!=='B');
+  $('panelS').classList.toggle('hidden',tab!=='S');
+  ['A','B','S'].forEach(t=> $('tab'+t).classList.toggle('active',t===tab));
+}
+$('tabA').onclick=()=>switchTab('A');
+$('tabB').onclick=()=>switchTab('B');
+$('tabS').onclick=()=>switchTab('S');
+
+// Show/hide custom SpO2
+$('spo2Target').onchange=()=>{
+  $('spo2Custom').classList.toggle('hidden',$('spo2Target').value!=='custom');
 };
-const fmt = (n, d=2) => isNum(n) ? n.toFixed(d) : "—";
-const toMMHg = (v, units) => units === "kpa" ? v * mmHgPerKPa : v;
-const fromMMHg = (v, units) => units === "kpa" ? v / mmHgPerKPa : v;
 
-function setBadge(kind, text){
-  const row = $("statusBadges");
-  row.innerHTML = "";
-  const dotClass = kind === "good" ? "good" : kind === "warn" ? "warn" : kind === "bad" ? "bad" : "";
-  row.innerHTML = `<span class="pill"><span class="dot ${dotClass}"></span><span>${text}</span></span>`;
+// Clear helpers
+function clearA(){
+  ['phA','pco2A','po2A','hco3A','rrA','spo2A','naA','clA','albA','lacA','hrA','gcsA','flowOrFio2A','devNotesA'].forEach(id=>$(id).value='');
+  $('context').value='unknown';
+  $('spo2Target').value='normal'; $('spo2Custom').classList.add('hidden');$('spo2Custom').value='';
+  $('units').value='mmhg';
+  $('devA').value='nc';
+  $('interpretA').textContent='Enter values → Analyze A.';
+  $('planA').textContent='—';
+  $('flagsA').textContent='—';
+  $('fio2OutA').textContent='—';$('fio2WhyA').textContent='';
+  $('chipsA').innerHTML='';
+}
+function clearB(){
+  ['minsB','fio2SetB','nivSettingsB','phB','pco2B','po2B','hco3B','rrB','spo2B','lacB','hrB','gcsB','notesB'].forEach(id=>$(id).value='');
+  $('therapyB').value='o2';
+  $('fio2OutB').textContent='—';$('fio2WhyB').textContent='';
+  $('trendOut').textContent='Run Analyze A then Analyze B.';
+  $('vqOut').textContent='—';
+  $('failOut').textContent='—';
+  $('adjustOut').textContent='—';
+}
+$('btnClearA').onclick=clearA;
+$('btnClearB').onclick=clearB;
+
+// Example fill
+$('btnExampleA').onclick=function(){
+  clearA();
+  $('context').value='copd';
+  $('spo2Target').value='copd';
+  $('units').value='mmhg';
+  $('devA').value='nc';
+  $('flowOrFio2A').value=2;
+  $('phA').value=7.28; $('pco2A').value=68; $('po2A').value=58;
+  $('hco3A').value=31; $('rrA').value=30; $('spo2A').value=88;
+  $('naA').value=140; $('clA').value=100; $('albA').value=4.0;
+  $('lacA').value=1.6; $('hrA').value=118; $('gcsA').value=15;
+};
+$('btnExampleB').onclick=function(){
+  $('minsB').value=60;
+  $('therapyB').value='niv';
+  $('fio2SetB').value=28;
+  $('nivSettingsB').value='BiPAP 14/5';
+  $('phB').value=7.32; $('pco2B').value=60; $('po2B').value=66;
+  $('hco3B').value=30; $('rrB').value=24; $('spo2B').value=90;
+  $('lacB').value=1.4; $('hrB').value=110; $('gcsB').value=15;
+};
+
+// Compute FiO2
+function computeFiO2(device,val){
+  if(device==='ra') return {min:0.21,max:0.21,why:'Room air'};
+  if(!isNum(val)) return {min:NaN,max:NaN,why:'Enter flow or FiO₂'};
+  if(val>=22){
+    const f=clamp(val/100,0.21,1);return {min:f,max:f,why:'Set FiO₂'};
+  }
+  const L=val;
+  if(device==='nc'){return {min:clamp(0.21+0.03*L,0.21,0.44),max:clamp(0.21+0.04*L,0.21,0.44),why:'NC approx'};}
+  if(device==='simple'){return {min:clamp(0.28+0.01*(L-6),0.28,0.45),max:clamp(0.40+0.02*(L-6),0.40,0.60),why:'Simple mask'};}
+  if(device==='nrb'){return {min:clamp(0.60+0.01*(L-10),0.60,0.75),max:clamp(0.80+0.02*(L-10),0.80,0.95),why:'NRB approx'};}
+  return {min:NaN,max:NaN,why:'Set FiO₂% required'};
 }
 
-function addChip(text, tone){
-  const div = document.createElement("div");
-  div.className = `chip ${tone||""}`;
-  div.textContent = text;
-  $("chipsA").appendChild(div);
-}
-
-/* ===================== FiO2 estimation ===================== */
-function fio2FromDevice(device, flowOrPct){
-  // If value >=22, assume FiO2 percent. Otherwise treat as flow L/min for variable devices.
-  if (device === "ra") return {min:0.21, max:0.21, why:"Room air (~21%).", conf:"baseline"};
-  if (!isNum(flowOrPct)) return {min:NaN, max:NaN, why:"Enter flow (L/min) or FiO₂ (%).", conf:"unknown"};
-
-  if (flowOrPct >= 22){
-    const f = clamp(flowOrPct/100, 0.21, 1.0);
-    return {min:f, max:f, why:"Using user-entered set FiO₂.", conf:"high (user-set)"};
-  }
-
-  const L = flowOrPct;
-  if (device === "nc"){
-    // rough NC range: 0.21 + (0.03–0.04)*L, cap ~0.44
-    const min = clamp(0.21 + 0.03*L, 0.21, 0.44);
-    const max = clamp(0.21 + 0.04*L, 0.21, 0.44);
-    return {min, max, why:"NC heuristic: variable with minute ventilation.", conf:"variable"};
-  }
-  if (device === "simple"){
-    // broad range, very variable
-    const min = clamp(0.28 + 0.01*(L-6), 0.25, 0.45);
-    const max = clamp(0.40 + 0.02*(L-6), 0.35, 0.60);
-    return {min, max, why:"Simple mask heuristic: highly variable.", conf:"low"};
-  }
-  if (device === "nrb"){
-    const min = clamp(0.60 + 0.01*(L-10), 0.55, 0.75);
-    const max = clamp(0.80 + 0.02*(L-10), 0.75, 0.95);
-    return {min, max, why:"NRB heuristic: seal/bag/valves matter.", conf:"variable-high"};
-  }
-  // Venturi/HFNC/NIV should be set FiO2%
-  if (device === "venturi" || device === "hfnc" || device === "niv"){
-    return {min:NaN, max:NaN, why:"For Venturi/HFNC/NIV: enter FiO₂% (e.g., 28, 35, 40).", conf:"unknown"};
-  }
-  return {min:NaN, max:NaN, why:"Unknown device mapping.", conf:"unknown"};
-}
-
-/* ===================== Indices ===================== */
-function calcPAO2(fio2, paco2mm){
-  // PAO2 = FiO2*(Patm-PH2O) - PaCO2/RQ
-  const Patm = 760, PH2O = 47, RQ = 0.8;
-  if (!isNum(fio2) || !isNum(paco2mm)) return NaN;
-  return fio2*(Patm-PH2O) - paco2mm/RQ;
-}
-function indices({pao2mm, paco2mm, fio2min, fio2max, spo2, units}){
-  const out = {};
-  if (isNum(pao2mm) && isNum(fio2min) && isNum(fio2max)){
-    out.pfLow = pao2mm / fio2max;  // lower PF (worse) at higher FiO2
-    out.pfHigh = pao2mm / fio2min;
-  } else {
-    out.pfLow = NaN; out.pfHigh = NaN;
-  }
-  if (isNum(spo2) && isNum(fio2min) && isNum(fio2max)){
-    out.sfLow = spo2 / fio2max;
-    out.sfHigh = spo2 / fio2min;
-  } else {
-    out.sfLow = NaN; out.sfHigh = NaN;
-  }
-  // A-a / a/A using mid FiO2 for readability, also a range if FiO2 is ranged
-  if (isNum(pao2mm) && isNum(paco2mm) && isNum(fio2min) && isNum(fio2max)){
-    const fMid = (fio2min + fio2max)/2;
-    const PA = calcPAO2(fMid, paco2mm);
-    out.PAO2 = PA;
-    out.Aa = PA - pao2mm;
-    out.aA = pao2mm / PA;
-    // range for Aa with fio2 min/max
-    const PAmin = calcPAO2(fio2min, paco2mm);
-    const PAmax = calcPAO2(fio2max, paco2mm);
-    out.AaMin = Math.min(PAmin - pao2mm, PAmax - pao2mm);
-    out.AaMax = Math.max(PAmin - pao2mm, PAmax - pao2mm);
-    out.aAMin = Math.min(pao2mm/PAmin, pao2mm/PAmax);
-    out.aAMax = Math.max(pao2mm/PAmin, pao2mm/PAmax);
-  } else {
-    out.PAO2 = NaN; out.Aa = NaN; out.aA = NaN;
-    out.AaMin = NaN; out.AaMax = NaN;
-    out.aAMin = NaN; out.aAMax = NaN;
+// Indices calculations
+function calcIndices(pao2mm,paco2mm,fio2min,fio2max,spo2){
+  const out={};
+  out.pfLow=isNum(pao2mm)&&isNum(fio2max)?pao2mm/fio2max:NaN;
+  out.pfHigh=isNum(pao2mm)&&isNum(fio2min)?pao2mm/fio2min:NaN;
+  out.sfLow=isNum(spo2)&&isNum(fio2max)?spo2/fio2max:NaN;
+  out.sfHigh=isNum(spo2)&&isNum(fio2min)?spo2/fio2min:NaN;
+  if(isNum(pao2mm)&&isNum(paco2mm)&&isNum(fio2min)&&isNum(fio2max)){
+    const fMid=(fio2min+fio2max)/2;
+    const PA=fMid*(760-47)-paco2mm/0.8;
+    out.PAO2=PA;
+    out.Aa=PA-pao2mm;
+    out.aA=pao2mm/PA;
+    const PAmin=fio2min*(760-47)-paco2mm/0.8;
+    const PAmax=fio2max*(760-47)-paco2mm/0.8;
+    out.AaMin=Math.min(PAmin-pao2mm,PAmax-pao2mm);
+    out.AaMax=Math.max(PAmin-pao2mm,PAmax-pao2mm);
+    out.aAMin=Math.min(pao2mm/PAmin,pao2mm/PAmax);
+    out.aAMax=Math.max(pao2mm/PAmin,pao2mm/PAmax);
+  }else{
+    out.PAO2=NaN;out.Aa=NaN;out.aA=NaN;out.AaMin=NaN;out.AaMax=NaN;out.aAMin=NaN;out.aAMax=NaN;
   }
   return out;
 }
-function oxygenLabel(pf){
-  if (!isNum(pf)) return "unknown";
-  if (pf < 100) return "very severe";
-  if (pf < 150) return "severe";
-  if (pf < 200) return "moderate";
-  if (pf < 300) return "mild";
-  return "near-normal";
-}
 
-/* ===================== Acid-base rules ===================== */
-function expPCO2_Winter(hco3){ return 1.5*hco3 + 8; } // ±2
-function expPCO2_MetAlk(hco3){ return 0.7*(hco3-24) + 40; } // ±5
-function expHCO3_RespAcid(pco2mm, chronic){ return 24 + (chronic?4:1) * ((pco2mm - 40)/10); }
-function expHCO3_RespAlk(pco2mm, chronic){ return 24 - (chronic?5:2) * ((40 - pco2mm)/10); }
-
-function acidBase(ph, pco2mm, hco3){
-  if (![ph,pco2mm,hco3].every(isNum)) return {primary:"Undetermined", text:"Need pH + PaCO₂ + HCO₃⁻.", flags:[]};
-  const flags = [];
-  const acidemia = ph < 7.35;
-  const alkalemia = ph > 7.45;
-  const pco2High = pco2mm > 45;
-  const pco2Low = pco2mm < 35;
-  const hLow = hco3 < 22;
-  const hHigh = hco3 > 26;
-
-  let primary = "Near-normal pH / mixed disorder possible";
-  if (acidemia){
-    if (pco2High && !hLow) primary = "Primary respiratory acidosis likely";
-    else if (hLow && !pco2High) primary = "Primary metabolic acidosis likely";
-    else if (hLow && pco2High) primary = "Mixed metabolic + respiratory acidosis possible";
-    else primary = "Acidemia with unclear driver";
-  } else if (alkalemia){
-    if (pco2Low && !hHigh) primary = "Primary respiratory alkalosis likely";
-    else if (hHigh && !pco2Low) primary = "Primary metabolic alkalosis likely";
-    else if (hHigh && pco2Low) primary = "Mixed metabolic + respiratory alkalosis possible";
-    else primary = "Alkalemia with unclear driver";
+// Acid-base and compensation
+function analyzeAcidBase(ph,paco2mm,hco3){
+  if(![ph,paco2mm,hco3].every(isNum)){
+    return {primary:'Undetermined',text:'Need pH+PaCO₂+HCO₃⁻',flags:[]};
   }
-
-  const lines = [];
-  lines.push(`Acid–base: ${primary}`);
-  // metabolic acidosis compensation
-  if (hLow){
-    const exp = expPCO2_Winter(hco3);
-    lines.push(`• Winter: expected PaCO₂ ≈ ${fmt(exp,1)} ±2 mmHg`);
-    if (pco2mm > exp + 2) lines.push("  ↳ PaCO₂ higher than expected → concurrent resp acidosis/vent failure");
-    if (pco2mm < exp - 2) lines.push("  ↳ PaCO₂ lower than expected → concurrent resp alkalosis");
+  const acidemia=ph<7.35, alkalemia=ph>7.45;
+  const respAcid=paco2mm>45, respAlk=paco2mm<35;
+  const metabAcid=hco3<22, metabAlk=hco3>26;
+  let prim='Near-normal pH';
+  if(acidemia){
+    if(respAcid && !metabAcid) prim='Respiratory acidosis';
+    else if(metabAcid && !respAcid) prim='Metabolic acidosis';
+    else if(respAcid && metabAcid) prim='Mixed metabolic + respiratory acidosis';
+    else prim='Acidemia, unclear driver';
+  }else if(alkalemia){
+    if(respAlk && !metabAlk) prim='Respiratory alkalosis';
+    else if(metabAlk && !respAlk) prim='Metabolic alkalosis';
+    else if(respAlk && metabAlk) prim='Mixed metabolic + respiratory alkalosis';
+    else prim='Alkalemia, unclear driver';
   }
-  if (hHigh){
-    const exp = expPCO2_MetAlk(hco3);
-    lines.push(`• Met alkalosis: expected PaCO₂ ≈ ${fmt(exp,1)} ±5 mmHg`);
-    if (pco2mm > exp + 5) lines.push("  ↳ PaCO₂ higher than expected → concurrent resp acidosis");
-    if (pco2mm < exp - 5) lines.push("  ↳ PaCO₂ lower than expected → concurrent resp alkalosis");
+  const lines=[];
+  lines.push(`Acid–base: ${prim}`);
+  if(metabAcid){
+    const exp=1.5*hco3+8;
+    lines.push(`• Winter: expected PaCO₂ ≈ ${fmt(exp,1)} ±2`);
+    if(paco2mm>exp+2) lines.push('  ↳ PaCO₂ higher than expected → concurrent respiratory acidosis');
+    if(paco2mm<exp-2) lines.push('  ↳ PaCO₂ lower than expected → concurrent respiratory alkalosis');
   }
-  // respiratory compensation
-  if (pco2High){
-    const expA = expHCO3_RespAcid(pco2mm,false);
-    const expC = expHCO3_RespAcid(pco2mm,true);
-    lines.push(`• Resp acidosis expected HCO₃⁻: acute≈${fmt(expA,1)}, chronic≈${fmt(expC,1)}`);
-    if (hco3 < expA - 2) lines.push("  ↳ HCO₃⁻ lower than expected → extra metabolic acidosis");
-    if (hco3 > expC + 3) lines.push("  ↳ HCO₃⁻ higher than expected → extra metabolic alkalosis / very chronic");
+  if(metabAlk){
+    const exp=0.7*(hco3-24)+40;
+    lines.push(`• Met alkalosis: expected PaCO₂ ≈ ${fmt(exp,1)} ±5`);
+    if(paco2mm>exp+5) lines.push('  ↳ PaCO₂ higher than expected → concurrent respiratory acidosis');
+    if(paco2mm<exp-5) lines.push('  ↳ PaCO₂ lower than expected → concurrent respiratory alkalosis');
   }
-  if (pco2Low){
-    const expA = expHCO3_RespAlk(pco2mm,false);
-    const expC = expHCO3_RespAlk(pco2mm,true);
-    lines.push(`• Resp alkalosis expected HCO₃⁻: acute≈${fmt(expA,1)}, chronic≈${fmt(expC,1)}`);
-    if (hco3 > expA + 2) lines.push("  ↳ HCO₃⁻ higher than expected → extra metabolic alkalosis");
-    if (hco3 < expC - 3) lines.push("  ↳ HCO₃⁻ lower than expected → extra metabolic acidosis");
+  if(respAcid){
+    const expA=24 + 1*((paco2mm-40)/10);
+    const expC=24 + 3.5*((paco2mm-40)/10);
+    lines.push(`• Resp acidosis: expected HCO₃⁻ acute≈${fmt(expA,1)}, chronic≈${fmt(expC,1)}`);
+    if(hco3<expA-2) lines.push('  ↳ HCO₃⁻ lower than expected → extra metabolic acidosis');
+    if(hco3>expC+2) lines.push('  ↳ HCO₃⁻ higher than expected → extra metabolic alkalosis or chronic retention');
   }
-
-  if (ph < 7.25) flags.push("High-risk acidemia (pH < 7.25)");
-  if (ph < 7.20) flags.push("Severe acidemia (pH < 7.20)");
-  if (pco2mm > 60) flags.push("Marked hypercapnia");
-  if (pco2mm > 80) flags.push("Severe hypercapnia");
-  return {primary, text: lines.join("\n"), flags};
-}
-
-/* ===================== Anion gap / delta ratio ===================== */
-function anionGap(na, cl, hco3, alb){
-  if (![na,cl,hco3].every(isNum)) return {ag:NaN, agCorr:NaN, ratio:NaN};
-  const ag = na - (cl + hco3);
-  const agCorr = isNum(alb) ? (ag + 2.5*(4.0 - alb)) : ag;
-  const deltaAG = agCorr - 12;
-  const deltaH = 24 - hco3;
-  const ratio = (deltaH !== 0) ? (deltaAG / deltaH) : NaN;
-  return {ag, agCorr, ratio};
-}
-
-/* ===================== HACOR score (range if FiO2 range) ===================== */
-function hacorPtsHR(hr){ return (hr >= 121) ? 1 : 0; }
-function hacorPtsPH(ph){
-  if (ph >= 7.35) return 0;
-  if (ph >= 7.30) return 2;
-  if (ph >= 7.25) return 3;
-  return 4;
-}
-function hacorPtsGCS(gcs){
-  if (gcs === 15) return 0;
-  if (gcs >= 13) return 2;
-  if (gcs >= 11) return 5;
-  return 10;
-}
-function hacorPtsRR(rr){
-  if (rr <= 30) return 0;
-  if (rr <= 35) return 1;
-  if (rr <= 40) return 2;
-  if (rr <= 45) return 3;
-  return 4;
-}
-function hacorPtsPF(pf){
-  if (pf >= 201) return 0;
-  if (pf >= 176) return 2;
-  if (pf >= 151) return 3;
-  if (pf >= 126) return 4;
-  if (pf >= 101) return 5;
-  return 6;
-}
-function hacorRange({hr, ph, gcs, rr, pao2mm, fio2min, fio2max}){
-  if (![hr,ph,gcs,rr,pao2mm].every(isNum) || ![fio2min,fio2max].every(isNum)){
-    return {min:NaN, max:NaN, note:"Need HR, pH, GCS, RR, PaO₂ and FiO₂."};
+  if(respAlk){
+    const expA=24 - 2*((40-paco2mm)/10);
+    const expC=24 - 4*((40-paco2mm)/10);
+    lines.push(`• Resp alkalosis: expected HCO₃⁻ acute≈${fmt(expA,1)}, chronic≈${fmt(expC,1)}`);
+    if(hco3>expA+2) lines.push('  ↳ HCO₃⁻ higher than expected → extra metabolic alkalosis');
+    if(hco3<expC-2) lines.push('  ↳ HCO₃⁻ lower than expected → extra metabolic acidosis');
   }
-  const base = hacorPtsHR(hr) + hacorPtsPH(ph) + hacorPtsGCS(gcs) + hacorPtsRR(rr);
-  // PF varies with FiO2 range
-  const pfLow = pao2mm / fio2max;
-  const pfHigh = pao2mm / fio2min;
-  const ptsLow = hacorPtsPF(pfLow);
-  const ptsHigh = hacorPtsPF(pfHigh);
-  const min = base + Math.min(ptsLow, ptsHigh);
-  const max = base + Math.max(ptsLow, ptsHigh);
-  return {min, max, note:"HACOR shown as range if FiO₂ is estimated."};
+  const flags=[];
+  if(ph<7.25) flags.push('pH < 7.25');
+  if(ph<7.20) flags.push('pH < 7.20');
+  if(paco2mm>60) flags.push('PaCO₂ > 60');
+  if(paco2mm>80) flags.push('PaCO₂ > 80');
+  return {primary:prim,text:lines.join('\\n'),flags};
 }
 
-/* ===================== Plan suggestion + trial logic ===================== */
-function targetText(){
-  const t = $("spo2Target").value;
-  if (t === "custom") return ($("spo2Custom").value || "custom target");
-  if (t === "copd") return "88–92%";
-  return "92–96%";
+// HACOR scoring
+function hacorScore(hr,ph,gcs,rr,pao2mm,fio2Min,fio2Max){
+  if(![hr,ph,gcs,rr,pao2mm,fio2Min,fio2Max].every(isNum)) return {min:NaN,max:NaN};
+  const base=hacorPtsHR(hr)+hacorPtsPH(ph)+hacorPtsGCS(gcs)+hacorPtsRR(rr);
+  const pfLow=pao2mm/fio2Max;const pfHigh=pao2mm/fio2Min;
+  const ptsLow=hacorPtsPF(pfLow);const ptsHigh=hacorPtsPF(pfHigh);
+  return {min:base+Math.min(ptsLow,ptsHigh),max:base+Math.max(ptsLow,ptsHigh)};
+}
+function hacorPtsHR(hr){return hr>=121?1:0;}
+function hacorPtsPH(ph){if(ph>=7.35)return 0;if(ph>=7.30)return 2;if(ph>=7.25)return 3;return 4;}
+function hacorPtsGCS(g){if(g===15)return 0;if(g>=13)return 2;if(g>=11)return 5;return 10;}
+function hacorPtsRR(rr){if(rr<=30)return 0;if(rr<=35)return 1;if(rr<=40)return 2;if(rr<=45)return 3;return 4;}
+function hacorPtsPF(pf){if(pf>=201)return 0;if(pf>=176)return 2;if(pf>=151)return 3;if(pf>=126)return 4;if(pf>=101)return 5;return 6;}
+
+// Analyze baseline
+$('btnAnalyzeA').onclick=function(){
+  const units=$('units').value;
+  const dev=$('devA').value;
+  const flow=Number($('flowOrFio2A').value);
+  const fio2=computeFiO2(dev,flow);
+  $('fio2OutA').textContent=isNum(fio2.min)?fmt(fio2.min*100,0)+'%–'+fmt(fio2.max*100,0)+'%':'—';
+  $('fio2WhyA').textContent=fio2.why;
+  // ABG
+  const pH=parseFloat($('phA').value);
+  const pCO2=toMMHg(parseFloat($('pco2A').value),units);
+  const pO2=toMMHg(parseFloat($('po2A').value),units);
+  const hco3=parseFloat($('hco3A').value);
+  const rr=parseFloat($('rrA').value);
+  const spo2=parseFloat($('spo2A').value);
+  const na=parseFloat($('naA').value);
+  const cl=parseFloat($('clA').value);
+  const alb=parseFloat($('albA').value);
+  const lac=parseFloat($('lacA').value);
+  const hr=parseFloat($('hrA').value);
+  const gcs=parseFloat($('gcsA').value);
+  // Indices
+  const idx=calcIndices(pO2,pCO2,fio2.min,fio2.max,spo2);
+  // Acid-base
+  const acid=analyzeAcidBase(pH,pCO2,hco3);
+  // AG & delta
+  let agLine='';
+  if(isNum(na)&&isNum(cl)&&isNum(hco3)){
+    const ag=na-(cl+hco3);
+    const corr=isNum(alb)?ag+2.5*(4.0-alb):ag;
+    agLine=`AG: ${fmt(ag,1)} (corr: ${fmt(corr,1)})`;
+  }
+  // HACOR
+  const hac=hacorScore(hr,pH,gcs,rr,pO2,fio2.min,fio2.max);
+  // Interpret
+  const lines=[];
+  lines.push(`FiO₂: ${isNum(fio2.min)?fmt(fio2.min*100,0)+'–'+fmt(fio2.max*100,0)+'%':'unknown'}`);
+  if(isNum(idx.pfLow)) lines.push(`P/F: ${fmt(idx.pfLow,0)}–${fmt(idx.pfHigh,0)} mmHg (${oxygenLabel(idx.pfLow)})`);
+  if(isNum(idx.AaMin)) lines.push(`A–a: ${fmt(idx.AaMin,0)}–${fmt(idx.AaMax,0)} mmHg`);
+  if(isNum(idx.aAMin)) lines.push(`a/A: ${fmt(idx.aAMin,2)}–${fmt(idx.aAMax,2)}`);
+  if(isNum(lac)) lines.push(`Lactate: ${fmt(lac,1)}`);
+  if(agLine) lines.push(agLine);
+  $('interpretA').textContent=lines.join('\\n')+'\\n\\n'+acid.text;
+  $('flagsA').textContent=acid.flags.join('\\n')||'—';
+  // Chips
+  $('chipsA').innerHTML='';
+  if(isNum(idx.pfLow)&&idx.pfLow<200) addChip('P/F < 200','warn');
+  if(isNum(idx.pfLow)&&idx.pfLow<150) addChip('P/F < 150','bad');
+  acid.flags.forEach(fl=> addChip(fl,fl.includes('severe')?'bad':'warn'));
+  if(isNum(hac.max)&&hac.max>5) addChip('HACOR > 5','warn');
+  if(isNum(lac)&&lac>4) addChip('Lactate > 4','warn');
+  if(isNum(lac)&&lac>6) addChip('Lactate > 6','bad');
+  // Plan / escalation
+  const ctx=$('context').value;
+  let plan=['Target SpO₂: '+($('spo2Target').value==='custom'?$('spo2Custom').value||'?':$('spo2Target').value==='copd'?'88–92%':'92–96%')];
+  const hypercap=pCO2>45; const acidemia=pH<7.35; const hypox=pO2<60;
+  if(hypercap&&acidemia){
+    plan.push('Modality: BiPAP/NIV');
+    plan.push('Start: IPAP ~10–12 cmH₂O, EPAP 4–5 cmH₂O');
+    plan.push('Titrate IPAP +2–3 if CO₂/pH not improving');
+    plan.push('Increase EPAP/FiO₂ if oxygenation poor');
+  }else if(hypox&&!hypercap){
+    plan.push('Modality: CPAP or HFNC');
+    plan.push('Start CPAP 5–10 cmH₂O; titrate for oxygenation');
+    plan.push('If using BiPAP for oxygenation: EPAP 5–10, PS 5–10 (monitor)');
+  }else{
+    plan.push('No single modality forced; use clinical judgment');
+    if(ctx==='lactic') plan.push('In lactic acidosis: treat cause; NIV to offload WOB without suppressing ventilation');
+  }
+  plan.push('Reassess in 1–2 h: expect pH/PaCO₂ improvement if working');
+  $('planA').textContent=plan.join('\\n');
+  baseline={
+    ph:pH,pco2mm:pCO2,pao2mm:pO2,hco3, rr, spo2, na, cl, alb, lac, hr, gcs,
+    fio2Min:fio2.min,fio2Max:fio2.max,
+    indices:idx, acid, agLine, hac, context:ctx, plan
+  };
+  updateSummary();
+};
+
+// Analyze B
+$('btnAnalyzeB').onclick=function(){
+  if(!baseline){alert('Analyze A first');return;}
+  // Determine FiO2 for B
+  const set=Number($('fio2SetB').value);
+  let fio2;
+  if(isNum(set)){const f=clamp(set/100,0.21,1.0);fio2={min:f,max:f,why:'Set'};}
+  else{fio2=computeFiO2($('devA').value,Number($('flowOrFio2A').value));}
+  $('fio2OutB').textContent=isNum(fio2.min)?fmt(fio2.min*100,0)+'%–'+fmt(fio2.max*100,0)+'%':'—';
+  $('fio2WhyB').textContent=fio2.why;
+  // ABG B
+  const units=$('units').value;
+  const pH=parseFloat($('phB').value);
+  const pCO2=toMMHg(parseFloat($('pco2B').value),units);
+  const pO2=toMMHg(parseFloat($('po2B').value),units);
+  const hco3=parseFloat($('hco3B').value);
+  const rr=parseFloat($('rrB').value);
+  const spo2=parseFloat($('spo2B').value);
+  const hr=parseFloat($('hrB').value);
+  const gcs=parseFloat($('gcsB').value);
+  const lac=parseFloat($('lacB').value);
+  const therapy=$('therapyB').value;
+  // Indices
+  const idx=calcIndices(pO2,pCO2,fio2.min,fio2.max,spo2);
+  // Acid
+  const acid=analyzeAcidBase(pH,pCO2,hco3);
+  // HACOR
+  const hac=hacorScore(hr,pH,gcs,rr,pO2,fio2.min,fio2.max);
+  // Trend
+  let t=[];
+  const mins=parseFloat($('minsB').value);
+  if(isNum(mins)) t.push('Time on therapy: '+fmt(mins,0)+' min');
+  if(isNum(baseline.ph)&&isNum(pH)) t.push('pH: '+fmt(baseline.ph,2)+' → '+fmt(pH,2));
+  if(isNum(baseline.pco2mm)&&isNum(pCO2)) t.push('PaCO₂: '+Math.round(baseline.pco2mm)+' → '+Math.round(pCO2)+' mmHg');
+  if(isNum(baseline.pao2mm)&&isNum(pO2)) t.push('PaO₂: '+Math.round(baseline.pao2mm)+' → '+Math.round(pO2)+' mmHg');
+  if(isNum(baseline.indices.pfLow)&&isNum(idx.pfLow)) t.push('P/F: '+fmt(baseline.indices.pfLow,0)+' → '+fmt(idx.pfLow,0)+' mmHg');
+  $('trendOut').textContent=t.join('\\n');
+  // V/Q suggestion
+  let vq='—';
+  if(isNum(pO2)&&isNum(pCO2)&&isNum(fio2.min)&&isNum(fio2.max)){
+    const mid=(fio2.min+fio2.max)/2;
+    const PA=mid*(760-47)-pCO2/0.8;
+    const aA=pO2/PA;
+    const pfAvg=pO2/mid;
+    if(pfAvg<150 && aA<0.30) vq='Shunt-like physiology (poor O₂ response)';
+    else if(aA<0.40) vq='Likely V/Q mismatch';
+    else if(aA>0.60) vq='Possible hypoventilation/diffusion';
+  }
+  $('vqOut').textContent=vq;
+  // Fail flags
+  let fails=[];
+  if(isNum(mins)&&mins>=30&&mins<=240){
+    if(isNum(baseline.ph)&&isNum(pH)&&pH<=baseline.ph) fails.push('No pH improvement');
+    if(isNum(baseline.pco2mm)&&isNum(pCO2)&&pCO2>=baseline.pco2mm) fails.push('PaCO₂ not improving');
+    if(isNum(baseline.rr)&&isNum(rr)&&rr>=baseline.rr) fails.push('RR not improving');
+  }
+  if(isNum(rr)&&rr>25) fails.push('RR >25');
+  if(isNum(pH)&&pH<7.20) fails.push('Severe acidosis');
+  if(isNum(spo2)){
+    const tgt=$('spo2Target').value;
+    if(tgt==='copd' && spo2<88) fails.push('SpO₂ below COPD target');
+    if(tgt!=='copd' && spo2<90) fails.push('SpO₂ below target');
+  }
+  if(isNum(hac.max)&&hac.max>5) fails.push('HACOR >5');
+  $('failOut').textContent=fails.length?fails.join('\\n'):'No major failing flags';
+  // Adjust suggestions
+  let adj=[];
+  if(isNum(baseline.pco2mm)&&isNum(pCO2)&&pCO2>=baseline.pco2mm){
+    adj.push('Increase IPAP by 2–3 cmH₂O (if on BiPAP)');
+    adj.push('Check mask leak and synchrony');
+  }
+  if(isNum(idx.pfLow)&&idx.pfLow<150){
+    adj.push('Increase EPAP/PEEP by 1–2 cmH₂O and/or FiO₂');
+  }
+  if(isNum(lac)&&lac>=2){
+    adj.push('High lactate: treat cause and maintain compensation');
+  }
+  $('adjustOut').textContent=adj.length?adj.join('\\n'):'No specific adjustment suggestions';
+  // Store B
+  baseline.B={
+    ph:pH,pco2mm:pCO2,pao2mm:pO2,hco3,rr,spo2,hr,gcs,lac,
+    fio2Min:fio2.min,fio2Max:fio2.max,
+    indices:idx, acid, hac, fails, vq, adj,
+    mins, therapy
+  };
+  updateSummary();
+};
+
+// Update summary
+function updateSummary(){
+  if(!baseline) return;
+  let s=[];
+  s.push('Context: '+baseline.context);
+  s.push('ABG A: pH '+fmt(baseline.ph,2)+', PaCO₂ '+fmt(baseline.pco2mm,1)+' mmHg, PaO₂ '+fmt(baseline.pao2mm,1)+' mmHg, HCO₃ '+fmt(baseline.hco3,1));
+  s.push('FiO₂ A: '+fmt(baseline.fio2Min*100,0)+'–'+fmt(baseline.fio2Max*100,0)+'%');
+  s.push('P/F A: '+fmt(baseline.indices.pfLow,0)+'–'+fmt(baseline.indices.pfHigh,0)+' mmHg');
+  s.push('Plan: '+baseline.plan.join(' '));
+  if(baseline.B){
+    const b=baseline.B;
+    s.push('');
+    s.push('Repeat after '+fmt(b.mins||NaN,0)+' min on '+b.therapy+':');
+    s.push('ABG B: pH '+fmt(b.ph,2)+', PaCO₂ '+fmt(b.pco2mm,1)+' mmHg, PaO₂ '+fmt(b.pao2mm,1)+' mmHg, HCO₃ '+fmt(b.hco3,1));
+    s.push('FiO₂ B: '+(isNum(b.fio2Min)?fmt(b.fio2Min*100,0)+'–'+fmt(b.fio2Max*100,0)+'%':'unknown'));
+    s.push('P/F B: '+fmt(b.indices.pfLow,0)+'–'+fmt(b.indices.pfHigh,0)+' mmHg');
+    s.push('V/Q: '+b.vq);
+    if(b.fails.length) s.push('Flags: '+b.fails.join('; '));
+    else s.push('No major failing flags.');
+    if(b.adj.length) s.push('Adjust: '+b.adj.join(' '));
+  }
+  $('summaryOut').textContent=s.join('\\n');
 }
 
-/* (JS continues exactly as in the downloadable file) */
+// Copy summary
+$('btnCopySummary').onclick=()=>navigator.clipboard.writeText($('summaryOut').textContent);
+$('btnCopyAll').onclick=()=>{
+  const all=[
+    $('interpretA').textContent,
+    $('planA').textContent,
+    $('flagsA').textContent,
+    $('trendOut').textContent,
+    $('vqOut').textContent,
+    $('failOut').textContent,
+    $('adjustOut').textContent,
+    $('summaryOut').textContent
+  ].join('\\n\\n---\\n\\n');
+  navigator.clipboard.writeText(all);
+};
 </script>
 </body>
 </html>
