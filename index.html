@@ -200,6 +200,10 @@
             <option value="kpa">kPa</option>
           </select>
         </div>
+        <div>
+          <label for="heightA">Height (cm)</label>
+          <input id="heightA" type="number" step="0.5" placeholder="e.g., 170">
+        </div>
       </div>
 
       <div class="grid cols-3">
@@ -263,7 +267,7 @@
             <input id="Cl_A" type="number">
           </div>
           <div>
-            <label for="Alb_A">Albumin (g/dL)</label>
+            <label for "Alb_A">Albumin (g/dL)</label>
             <input id="Alb_A" type="number" step="0.1">
           </div>
           <div>
@@ -331,7 +335,7 @@
         </div>
         <div>
           <label for="settingsB">NIV settings (optional)</label>
-          <input id="settingsB" placeholder="e.g., IPAP 14 / EPAP 6">
+          <input id="settingsB" placeholder="e.g., IPAP 14 / EPAP 5">
         </div>
       </div>
 
@@ -639,19 +643,28 @@
       const hypercap = Number.isFinite(PaCO2) && PaCO2 > 50;
       const severeAcid = Number.isFinite(pH) && pH < 7.25;
       const hypox = Number.isFinite(indices.pfLow) && indices.pfLow < 200;
+      const height = num('heightA');
+
+      // Height-informed gentle starting pressures
+      let peepStart = 5;
+      let deltaStart = 10;
+      if (Number.isFinite(height)) {
+        if (height < 160) { peepStart = 4; deltaStart = 8; }
+        else if (height > 185) { peepStart = 6; deltaStart = 12; }
+      }
 
       if (hypercap || severeAcid) {
-        niv.push('BiPAP/NIV: start IPAP 10–12, EPAP 4–5 cmH₂O. Raise IPAP by 2–3 for CO₂ clearance.');
-        niv.push('If hypoxemic, raise EPAP to 6–10 and titrate FiO₂ to SpO₂ target.');
+        niv.push(`NIV: start PEEP ${peepStart}–${peepStart + 1} cmH₂O, ΔPinsp ${deltaStart}–${deltaStart + 2} cmH₂O (height-adjusted).`);
+        niv.push('Raise ΔPinsp by 2–3 if CO₂ clearance is inadequate; increase PEEP/FiO₂ for oxygenation if needed.');
       } else if (hypox) {
-        niv.push('CPAP 5–10 cmH₂O or HFNC. If using BiPAP for oxygenation: EPAP 5–10, PS 5–10.');
+        niv.push('CPAP/PEEP 5–10 cmH₂O or HFNC. If using NIV for oxygenation: PEEP 5–10 with ΔPinsp 5–10.');
       } else {
         niv.push('No mandatory NIV mode; use clinical judgement and trajectory.');
       }
 
       const rationale = [];
-      if (hypercap) rationale.push('Hypercapnia suggests ventilation-focused NIV (increase IPAP).');
-      if (hypox) rationale.push('Low P/F suggests oxygenation support (increase EPAP/FiO₂).');
+      if (hypercap) rationale.push('Hypercapnia suggests ventilation-focused NIV (increase ΔPinsp).');
+      if (hypox) rationale.push('Low P/F suggests oxygenation support (increase PEEP/FiO₂).');
       if (severeAcid) rationale.push('Acidemia increases risk of NIV failure—close monitoring.');
 
       document.getElementById('nivA').textContent = niv.concat('', rationale).join('\n');
@@ -675,6 +688,7 @@
         pH, PaCO2, PaO2, HCO3, RR, SpO2, FiO2, indices, acid, ag, hacor, flags, context: document.getElementById('contextA').value,
         target: document.getElementById('spo2Custom').classList.contains('hidden') ? document.getElementById('targetSpO2').value : document.getElementById('spo2Custom').value || document.getElementById('targetSpO2').value,
         note: document.getElementById('noteA').value,
+        height,
         nivPlan: niv, rationale
       };
 
@@ -716,8 +730,8 @@
       if (Number.isFinite(lactate) && lactate >= 2) flags.push('Elevated lactate');
 
       const suggestions = [];
-      if (Number.isFinite(PaCO2) && Number.isFinite(baselineData.PaCO2) && PaCO2 >= baselineData.PaCO2) suggestions.push('Increase IPAP by 2–3 cmH₂O to improve ventilation.');
-      if (Number.isFinite(indices.pfLow) && indices.pfLow < 150) suggestions.push('Increase EPAP/PEEP by 1–2 cmH₂O and/or FiO₂ to improve oxygenation.');
+      if (Number.isFinite(PaCO2) && Number.isFinite(baselineData.PaCO2) && PaCO2 >= baselineData.PaCO2) suggestions.push('Increase ΔPinsp by 2–3 cmH₂O to improve ventilation.');
+      if (Number.isFinite(indices.pfLow) && indices.pfLow < 150) suggestions.push('Increase PEEP by 1–2 cmH₂O and/or FiO₂ to improve oxygenation.');
       if (Number.isFinite(indices.pfLow) && Number.isFinite(baselineData.indices.pfLow) && indices.pfLow - baselineData.indices.pfLow < 20) suggestions.push('Minimal P/F improvement → reassess mask seal, recruit with EPAP/PEEP, consider escalation.');
       if (Number.isFinite(lactate) && lactate >= 2) suggestions.push('Address shock/sepsis: source control, fluids/pressors as appropriate.');
       if (!suggestions.length) suggestions.push('Continue current support, reassess in 15–30 min.');
@@ -745,7 +759,7 @@
         else vq.push('A–a gradient stable → less shunt change; consider ventilation/drive issues.');
       }
       if (Number.isFinite(indices.pfLow) && indices.pfLow < 150) vqFlags.push('Very low P/F → shunt-like physiology likely.');
-      if (Number.isFinite(baselineData.PaCO2) && Number.isFinite(PaCO2) && PaCO2 > baselineData.PaCO2) vq.push('Ventilation not improving → raise IPAP, check mask/trigger.');
+      if (Number.isFinite(baselineData.PaCO2) && Number.isFinite(PaCO2) && PaCO2 > baselineData.PaCO2) vq.push('Ventilation not improving → raise ΔPinsp, check mask/trigger.');
       if (!vq.length) vq.push('V/Q heuristic: not enough data (need FiO₂, PaO₂, PaCO₂).');
       document.getElementById('vqB').textContent = vq.join('\n');
       renderChips('chipsB', vqFlags);
@@ -764,6 +778,7 @@
       if (baselineData.indices) sum.push(`P/F ${baselineData.indices.pfLow?.toFixed(0)}–${baselineData.indices.pfHigh?.toFixed(0)}; A–a ${baselineData.indices.AAGmin?.toFixed(0)}–${baselineData.indices.AAGmax?.toFixed(0)}.`);
       sum.push(`Acid–base: ${baselineData.acid.text.replace(/\n/g, ' | ')}`);
       sum.push(`Suggested NIV/CPAP start: ${baselineData.nivPlan.join(' | ')}`);
+      if (Number.isFinite(baselineData.height)) sum.push(`Height noted: ${baselineData.height} cm (used to tailor starting PEEP/ΔPinsp).`);
       if (baselineData.rationale.length) sum.push(`Rationale: ${baselineData.rationale.join(' ')}.`);
       sum.push(`Baseline flags: ${baselineData.flags.length ? baselineData.flags.join('; ') : 'None'}.`);
       if (repeatData) {
@@ -790,6 +805,7 @@
       document.getElementById('contextA').value = 'copd';
       document.getElementById('deviceA').value = 'nc';
       document.getElementById('flowFiO2A').value = 2;
+      document.getElementById('heightA').value = 165;
       document.getElementById('pH_A').value = 7.28;
       document.getElementById('PaCO2_A').value = 68;
       document.getElementById('PaO2_A').value = 55;
@@ -822,7 +838,7 @@
     }
 
     function clearA() {
-      ['pH_A','PaCO2_A','PaO2_A','HCO3_A','RR_A','SpO2_A','flowFiO2A','noteA','Na_A','Cl_A','Alb_A','Lac_A','HR_A','GCS_A'].forEach(id => document.getElementById(id).value = '');
+      ['pH_A','PaCO2_A','PaO2_A','HCO3_A','RR_A','SpO2_A','flowFiO2A','noteA','Na_A','Cl_A','Alb_A','Lac_A','HR_A','GCS_A','heightA'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('resultA').textContent = 'Enter Section A and click “Analyse A”.';
       document.getElementById('nivA').textContent = 'Will populate with suggested starting ranges and rationale.';
       document.getElementById('indicesA').innerHTML = '';
