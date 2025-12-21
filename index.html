@@ -3,20 +3,32 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Approx FiO₂ Estimator</title>
+  <title>FiO₂ + ABG (V/Q-aware) + NIV Helper (Educational)</title>
   <style>
-    :root { --bg:#0b1220; --card:#111b2e; --muted:#9fb0d0; --text:#e9f0ff; --accent:#5cc8ff; --warn:#ffcf5c; }
+    :root { --bg:#0b1220; --card:#111b2e; --muted:#9fb0d0; --text:#e9f0ff; --accent:#5cc8ff; --warn:#ffcf5c; --bad:#ff6b6b; --ok:#7CFF9B; }
     *{box-sizing:border-box}
     body{
       margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       background: radial-gradient(1200px 700px at 20% 10%, #14244a 0%, var(--bg) 60%);
       color:var(--text); line-height:1.4;
     }
-    .wrap{max-width:980px; margin:0 auto; padding:22px}
+    .wrap{max-width:1180px; margin:0 auto; padding:22px}
     h1{font-size:1.35rem; margin:0 0 10px}
+    h2{font-size:1.1rem; margin:0 0 10px}
     p{margin:8px 0; color:var(--muted)}
+    .tabs{display:flex; gap:10px; flex-wrap:wrap; margin:12px 0}
+    .tabbtn{
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.20);
+      color: var(--text);
+      padding:10px 12px; border-radius:999px; cursor:pointer; font-weight:700;
+    }
+    .tabbtn.active{
+      background: rgba(92,200,255,.18);
+      border-color: rgba(92,200,255,.35);
+    }
     .grid{display:grid; grid-template-columns: 1.2fr 1fr; gap:14px; margin-top:14px}
-    @media (max-width: 860px){ .grid{grid-template-columns:1fr} }
+    @media (max-width: 900px){ .grid{grid-template-columns:1fr} }
     .card{
       background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
       border:1px solid rgba(255,255,255,.10);
@@ -42,8 +54,6 @@
       border:1px solid rgba(92,200,255,.25);
       margin-top:12px;
     }
-    .big{font-size:2rem; font-weight:800; letter-spacing:.2px}
-    .sub{color:var(--muted)}
     .pill{
       display:inline-flex; align-items:center; gap:8px;
       padding:7px 10px; border-radius:999px; font-size:.9rem;
@@ -51,159 +61,368 @@
       background: rgba(0,0,0,.20);
       color:var(--text);
     }
+    .sub{color:var(--muted)}
     .hint{margin-top:10px; font-size:.95rem}
     .warn{color:var(--warn)}
-    table{width:100%; border-collapse:collapse; margin-top:10px; font-size:.95rem}
-    th,td{padding:10px 8px; border-bottom:1px solid rgba(255,255,255,.10); text-align:left; vertical-align:top}
-    th{color:#cfe0ff}
+    .bad{color:var(--bad)}
+    .ok{color:var(--ok)}
     .btn{
       cursor:pointer; border:none; border-radius:12px;
-      padding:10px 12px; font-weight:700;
+      padding:10px 12px; font-weight:800;
       color:#062033; background: linear-gradient(180deg, #76d7ff, #46bfff);
     }
+    .btn.secondary{
+      background: rgba(255,255,255,.12);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,.18);
+    }
     .btn:active{transform: translateY(1px)}
-    .footer{margin-top:14px; font-size:.92rem; color:var(--muted)}
     .mono{font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;}
+    .hr{height:1px; background: rgba(255,255,255,.10); margin:12px 0}
+    .chips{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+    .chip{
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.18);
+      padding:6px 10px; border-radius:999px; font-size:.9rem;
+    }
+    .checkgrid{display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:6px}
+    @media (max-width:700px){ .checkgrid{grid-template-columns:1fr} }
+    .check{
+      display:flex; gap:10px; align-items:flex-start;
+      padding:10px; border-radius:12px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.16);
+    }
+    .check input{width:auto; margin-top:3px}
+    .small{font-size:.92rem; color:var(--muted)}
+    .hidden{display:none !important}
+    .eduBanner{
+      padding:12px; border-radius:14px;
+      border:1px solid rgba(255,207,92,.28);
+      background: rgba(255,207,92,.10);
+      color: var(--text);
+      margin-top:12px;
+    }
+    details { border:1px solid rgba(255,255,255,.10); border-radius:14px; padding:10px 12px; background: rgba(0,0,0,.14); }
+    summary { cursor:pointer; font-weight:700; }
+    .boxBad{border-color: rgba(255,107,107,.35) !important; background: rgba(255,107,107,.08) !important;}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>Approx FiO₂ Estimator (mask/device + flow)</h1>
-    <p>
-      This estimates <strong>approximate FiO₂</strong> from common oxygen devices.
-      Reality varies with mask fit, patient minute ventilation, mouth breathing, and entrainment.
-      Use clinically appropriate guidance and your local protocols.
-    </p>
+    <h1>Oxygen FiO₂ + ABG (V/Q-aware) + NIV Helper (Educational)</h1>
+    <div class="eduBanner">
+      <strong>Educational aid only.</strong> This flags patterns (V/Q vs shunt-like oxygenation failure, hypoventilation, compensation checks) and shows
+      <strong>ranges</strong> used in common practice/teaching—not prescriptions. Use clinical trajectory + senior/ICU review for deteriorating patients.
+    </div>
 
-    <div class="grid">
-      <div class="card">
-        <div class="row">
-          <div>
-            <label for="device">Device</label>
-            <select id="device">
-              <option value="room">Room air (no O₂)</option>
-              <option value="nc">Nasal cannula</option>
-              <option value="simple">Simple face mask</option>
-              <option value="partial">Partial rebreather</option>
-              <option value="nrb">Non-rebreather (NRB)</option>
-              <option value="venturi">Venturi mask (fixed %)</option>
-            </select>
-          </div>
-          <div>
-            <label for="flow">Flow (L/min)</label>
-            <input id="flow" type="number" inputmode="decimal" min="0" step="0.5" placeholder="e.g., 4" />
-          </div>
-        </div>
+    <div class="tabs">
+      <button class="tabbtn active" id="tabO2">Oxygen → Approx FiO₂</button>
+      <button class="tabbtn" id="tabABG">ABG + NIV Helper</button>
+    </div>
 
-        <div id="venturiExtras" style="display:none; margin-top:6px">
-          <label for="venturiPct">Venturi adapter setting</label>
-          <select id="venturiPct">
-            <option value="24">24%</option>
-            <option value="28">28%</option>
-            <option value="31">31%</option>
-            <option value="35">35%</option>
-            <option value="40">40%</option>
-            <option value="50">50%</option>
-          </select>
-          <p class="hint">
-            Venturi FiO₂ is set by the adapter; flow affects total output, not the set percentage.
-            Ensure you meet the adapter’s minimum flow.
-          </p>
-        </div>
-
-        <div class="result" aria-live="polite">
-          <div class="pill">
-            <span>Estimated FiO₂</span>
-            <span id="quality" class="mono" style="opacity:.9"></span>
-          </div>
-          <div class="big mono" id="fio2Text">0.21</div>
-          <div class="sub" id="fio2Pct">≈ 21%</div>
-          <div class="row" style="align-items:center">
-            <div class="sub" id="rangeText"></div>
-            <div style="text-align:right">
-              <button class="btn" id="copyBtn" type="button">Copy</button>
+    <!-- OXYGEN TAB -->
+    <div id="panelO2">
+      <div class="grid">
+        <div class="card">
+          <h2>Approx FiO₂ from device + flow</h2>
+          <div class="row">
+            <div>
+              <label for="device">Device</label>
+              <select id="device">
+                <option value="room">Room air (no O₂)</option>
+                <option value="nc">Nasal cannula</option>
+                <option value="simple">Simple face mask</option>
+                <option value="partial">Partial rebreather</option>
+                <option value="nrb">Non-rebreather (NRB)</option>
+                <option value="venturi">Venturi mask (fixed %)</option>
+              </select>
+            </div>
+            <div>
+              <label for="flow">Flow (L/min)</label>
+              <input id="flow" type="number" inputmode="decimal" min="0" step="0.5" placeholder="e.g., 4" />
             </div>
           </div>
+
+          <div id="venturiExtras" class="hidden">
+            <label for="venturiPct">Venturi adapter setting</label>
+            <select id="venturiPct">
+              <option value="24">24%</option>
+              <option value="28">28%</option>
+              <option value="31">31%</option>
+              <option value="35">35%</option>
+              <option value="40">40%</option>
+              <option value="50">50%</option>
+            </select>
+            <p class="hint">Venturi FiO₂ is set by the adapter; flow mainly affects total output.</p>
+          </div>
+
+          <div class="result" aria-live="polite">
+            <div class="pill">
+              <span>Estimated FiO₂</span>
+              <span id="quality" class="mono" style="opacity:.9"></span>
+            </div>
+            <div class="mono" style="font-size:1.9rem; font-weight:900" id="fio2Text">0.21</div>
+            <div class="sub" id="fio2Pct">≈ 21%</div>
+            <div class="row" style="align-items:center">
+              <div class="sub" id="rangeText"></div>
+              <div style="text-align:right">
+                <button class="btn" id="copyBtn" type="button">Copy</button>
+              </div>
+            </div>
+          </div>
+
+          <p class="hint warn" id="safetyNote"></p>
+          <p class="small">This FiO₂ auto-fills into the ABG tab for P/F, A–a, a/A calculations.</p>
         </div>
 
-        <p class="hint warn" id="safetyNote"></p>
-      </div>
-
-      <div class="card">
-        <div class="pill">Typical textbook ranges (very approximate)</div>
-        <table>
-          <thead>
-            <tr>
-              <th>Device</th>
-              <th>Flow</th>
-              <th>Typical FiO₂ range</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Nasal cannula</td>
-              <td>1–6 L/min</td>
-              <td>~24–44% (often taught “+4% per L”)</td>
-            </tr>
-            <tr>
-              <td>Simple face mask</td>
-              <td>5–10 L/min</td>
-              <td>~35–60% <span class="warn">(avoid &lt;5 L/min)</span></td>
-            </tr>
-            <tr>
-              <td>Partial rebreather</td>
-              <td>6–10 L/min</td>
-              <td>~40–70% (depends heavily on bag inflation &amp; seal)</td>
-            </tr>
-            <tr>
-              <td>Non-rebreather</td>
-              <td>10–15 L/min</td>
-              <td>~60–90% (sometimes quoted up to ~95% with good seal)</td>
-            </tr>
-            <tr>
-              <td>Venturi mask</td>
-              <td>Per adapter</td>
-              <td>Fixed: 24/28/31/35/40/50%</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <div class="footer">
-          Assumption check: “device + flow = FiO₂” is only loosely true for variable-performance devices (most masks).
-          If you need a reliable delivered FiO₂, you generally need a fixed-performance system (e.g., Venturi) or a closed system.
+        <div class="card">
+          <div class="pill">How the app uses “V/Q-aware” oxygenation</div>
+          <p class="small">
+            On supplemental oxygen, “PaO₂ &lt; 60” alone is less informative. This app uses <strong>PAO₂</strong> (alveolar gas equation),
+            <strong>A–a</strong>, <strong>a/A</strong>, <strong>P/F</strong>, and an optional <strong>2-point O₂ response test</strong> to label patterns.
+          </p>
         </div>
       </div>
     </div>
+
+    <!-- ABG TAB -->
+    <div id="panelABG" class="hidden">
+      <div class="grid">
+        <div class="card">
+          <h2>Inputs</h2>
+
+          <div class="row">
+            <div>
+              <label for="scenario">Scenario</label>
+              <select id="scenario">
+                <option value="unsure">Not sure / mixed picture</option>
+                <option value="copd">AECOPD / hypercapnic risk</option>
+                <option value="cpo">Cardiogenic pulmonary oedema</option>
+                <option value="ohs">Obesity hypoventilation / overlap</option>
+                <option value="nmd">Neuromuscular / chest-wall hypoventilation</option>
+                <option value="hypox">De novo hypoxemic failure (pneumonia/ARDS) — caution</option>
+                <option value="lactic">Predominantly metabolic (lactic) acidosis with compensatory hyperventilation</option>
+              </select>
+            </div>
+            <div>
+              <label for="targetSat">Target SpO₂ (%)</label>
+              <input id="targetSat" type="text" placeholder="auto: COPD 88–92%, otherwise 92–96%" />
+              <div class="small">Defaults: COPD/CO₂ risk 88–92, otherwise 92–96 (override anytime).</div>
+            </div>
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="row">
+            <div>
+              <label for="unit">ABG units</label>
+              <select id="unit">
+                <option value="mmhg">mmHg</option>
+                <option value="kpa">kPa</option>
+              </select>
+            </div>
+            <div>
+              <label for="fio2Input">FiO₂ (fraction) — Point A</label>
+              <input id="fio2Input" type="number" min="0.21" max="1" step="0.01" placeholder="e.g., 0.40" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label for="ph">pH</label>
+              <input id="ph" type="number" step="0.01" placeholder="e.g., 7.28" />
+            </div>
+            <div>
+              <label for="paco2">PaCO₂</label>
+              <input id="paco2" type="number" step="0.1" placeholder="e.g., 60 (mmHg) or 8.0 (kPa)" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label for="hco3">HCO₃⁻</label>
+              <input id="hco3" type="number" step="0.1" placeholder="e.g., 18" />
+            </div>
+            <div>
+              <label for="pao2">PaO₂ — Point A</label>
+              <input id="pao2" type="number" step="0.1" placeholder="e.g., 60 (mmHg) or 8.0 (kPa)" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label for="spo2">SpO₂ now (optional)</label>
+              <input id="spo2" type="number" min="50" max="100" step="1" placeholder="e.g., 86" />
+            </div>
+            <div>
+              <label for="rr">Resp rate (optional)</label>
+              <input id="rr" type="number" min="0" max="80" step="1" placeholder="e.g., 34" />
+            </div>
+          </div>
+
+          <details style="margin-top:12px">
+            <summary>Two-point O₂ response test (baseline → after FiO₂ change)</summary>
+            <p class="small">
+              Enter a second PaO₂ after changing FiO₂. Interpret only if patient was stable and you allowed enough time for equilibration.
+              (“Formal” 100% O₂ approaches may use longer wash-in; this app is a bedside heuristic.)
+            </p>
+            <div class="row">
+              <div>
+                <label for="fio2B">FiO₂ — Point B</label>
+                <input id="fio2B" type="number" min="0.21" max="1" step="0.01" placeholder="e.g., 0.80" />
+              </div>
+              <div>
+                <label for="pao2B">PaO₂ — Point B</label>
+                <input id="pao2B" type="number" step="0.1" placeholder="e.g., 75 (mmHg) or 10.0 (kPa)" />
+              </div>
+            </div>
+            <div class="row">
+              <div>
+                <label for="minsB">Minutes after FiO₂ change (optional)</label>
+                <input id="minsB" type="number" min="0" step="1" placeholder="e.g., 10" />
+              </div>
+              <div style="display:flex; gap:10px; align-items:end;">
+                <button class="btn secondary" id="swapAB" type="button" style="width:100%;">Swap A ⇄ B</button>
+              </div>
+            </div>
+
+            <div class="result">
+              <div class="pill">O₂ response interpretation (heuristic)</div>
+              <div class="mono" id="o2resp">Enter Point B values to compute response.</div>
+            </div>
+          </details>
+
+          <details style="margin-top:12px">
+            <summary>Optional: V/Q-aware oxygenation inputs (barometric pressure, RQ)</summary>
+            <div class="row">
+              <div>
+                <label for="patm">Patm</label>
+                <input id="patm" type="number" step="0.1" placeholder="default: 760 mmHg / 101.3 kPa" />
+              </div>
+              <div>
+                <label for="rq">RQ (respiratory quotient)</label>
+                <input id="rq" type="number" step="0.01" placeholder="default: 0.80" />
+              </div>
+            </div>
+            <div class="small">Defaults are fine for most bedside use.</div>
+          </details>
+
+          <details style="margin-top:12px">
+            <summary>Optional: electrolytes & lactate (for AG + “lactic pattern” flags)</summary>
+            <div class="row">
+              <div>
+                <label for="na">Na⁺</label>
+                <input id="na" type="number" step="0.1" placeholder="e.g., 140" />
+              </div>
+              <div>
+                <label for="cl">Cl⁻</label>
+                <input id="cl" type="number" step="0.1" placeholder="e.g., 102" />
+              </div>
+            </div>
+            <div class="row">
+              <div>
+                <label for="alb">Albumin (g/dL) for AG correction</label>
+                <input id="alb" type="number" step="0.1" placeholder="e.g., 3.2" />
+              </div>
+              <div>
+                <label for="lac">Lactate</label>
+                <input id="lac" type="number" step="0.1" placeholder="e.g., 5.1" />
+              </div>
+            </div>
+          </details>
+
+          <div class="hr"></div>
+
+          <h2 style="margin-top:2px">Contraindication / caution flags</h2>
+          <div class="checkgrid">
+            <label class="check"><input type="checkbox" class="cx" value="airway" /> <span><strong>Can’t protect airway</strong> / vomiting / aspiration risk</span></label>
+            <label class="check"><input type="checkbox" class="cx" value="coop" /> <span><strong>Uncooperative</strong> / severe agitation</span></label>
+            <label class="check"><input type="checkbox" class="cx" value="facial" /> <span>Facial trauma / poor mask fit</span></label>
+            <label class="check"><input type="checkbox" class="cx" value="shock" /> <span>Hemodynamic instability / shock</span></label>
+          </div>
+
+          <div class="result">
+            <div class="row" style="align-items:center">
+              <div class="pill">Summary</div>
+              <div style="text-align:right"><button class="btn" id="copy" type="button">Copy</button></div>
+            </div>
+            <div class="mono" id="summary"></div>
+          </div>
+
+          <div class="result">
+            <div class="pill">NIV guidance (educational ranges)</div>
+            <div class="small" style="white-space:pre-wrap" id="nivGuidance"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Flags</h2>
+          <div class="chips" id="chips"></div>
+
+          <div class="result boxBad" style="margin-top:12px">
+            <div class="pill">Escalation / red flags</div>
+            <div class="small" style="white-space:pre-wrap" id="redflags"></div>
+          </div>
+
+          <div class="result" style="margin-top:12px">
+            <div class="pill">Compensation rules used (Boston “6 rules” style)</div>
+            <div class="small" style="white-space:pre-wrap" id="boston">
+Resp rules:
+• Acute resp acidosis: HCO₃⁻ ↑ ~1 per +10 mmHg PaCO₂ above 40
+• Chronic resp acidosis: HCO₃⁻ ↑ ~4 per +10
+• Acute resp alkalosis: HCO₃⁻ ↓ ~2 per −10 mmHg PaCO₂ below 40
+• Chronic resp alkalosis: HCO₃⁻ ↓ ~5 per −10
+Met rules:
+• Met acidosis (Winter): expected PaCO₂ ≈ 1.5×HCO₃⁻ + 8 (±2)
+• Met alkalosis: expected PaCO₂ ≈ 0.7×(HCO₃⁻−24) + 40 (±5)
+            </div>
+          </div>
+
+          <p class="small">
+            V/Q-aware oxygenation: uses PAO₂ (alveolar gas equation), A–a, a/A, plus P/F and the optional two-point O₂ response test.
+          </p>
+        </div>
+      </div>
+    </div>
+
   </div>
 
 <script>
-  const deviceEl = document.getElementById('device');
-  const flowEl = document.getElementById('flow');
-  const venturiExtras = document.getElementById('venturiExtras');
-  const venturiPctEl = document.getElementById('venturiPct');
+  // ---------- utils ----------
+  const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
+  const isNum = (v) => Number.isFinite(v);
+  const fmt = (n, d=2) => isNum(n) ? n.toFixed(d) : "—";
+  const mmHgPerKPa = 7.50062;
+  const toMMHg = (val, unit) => unit === "kpa" ? val * mmHgPerKPa : val;
+  const fromMMHg = (val, unit) => unit === "kpa" ? val / mmHgPerKPa : val;
 
-  const fio2Text = document.getElementById('fio2Text');
-  const fio2Pct = document.getElementById('fio2Pct');
-  const rangeText = document.getElementById('rangeText');
-  const safetyNote = document.getElementById('safetyNote');
-  const quality = document.getElementById('quality');
-  const copyBtn = document.getElementById('copyBtn');
-
-  function clamp(x, lo, hi){ return Math.min(hi, Math.max(lo, x)); }
-
-  function lerp(x, x0, x1, y0, y1){
-    if (x1 === x0) return y0;
-    const t = (x - x0) / (x1 - x0);
-    return y0 + t * (y1 - y0);
+  // ---------- tabs ----------
+  const tabO2 = document.getElementById("tabO2");
+  const tabABG = document.getElementById("tabABG");
+  const panelO2 = document.getElementById("panelO2");
+  const panelABG = document.getElementById("panelABG");
+  function setTab(which){
+    const o2 = which === "o2";
+    panelO2.classList.toggle("hidden", !o2);
+    panelABG.classList.toggle("hidden", o2);
+    tabO2.classList.toggle("active", o2);
+    tabABG.classList.toggle("active", !o2);
   }
+  tabO2.addEventListener("click", ()=>setTab("o2"));
+  tabABG.addEventListener("click", ()=>setTab("abg"));
 
-  function formatFiO2(f){
-    // show fraction with 2 decimals (0.21) and percent (~21%)
-    const frac = clamp(f, 0.21, 1.00);
-    const pct = Math.round(frac * 100);
-    fio2Text.textContent = frac.toFixed(2);
-    fio2Pct.textContent = `≈ ${pct}%`;
-  }
+  // ---------- O2 -> FiO2 ----------
+  const deviceEl = document.getElementById("device");
+  const flowEl = document.getElementById("flow");
+  const venturiExtras = document.getElementById("venturiExtras");
+  const venturiPctEl = document.getElementById("venturiPct");
+  const fio2Text = document.getElementById("fio2Text");
+  const fio2Pct = document.getElementById("fio2Pct");
+  const rangeText = document.getElementById("rangeText");
+  const safetyNote = document.getElementById("safetyNote");
+  const quality = document.getElementById("quality");
+  const copyBtn = document.getElementById("copyBtn");
 
   function setNotes({range="", warn="", q=""}){
     rangeText.textContent = range;
@@ -211,120 +430,538 @@
     quality.textContent = q ? `(${q})` : "";
   }
 
-  function estimate(){
-    const device = deviceEl.value;
-    const flowRaw = parseFloat(flowEl.value);
-    const hasFlow = Number.isFinite(flowRaw);
-    const flow = hasFlow ? flowRaw : 0;
-
-    venturiExtras.style.display = (device === "venturi") ? "block" : "none";
-
-    // Defaults
-    let fio2 = 0.21;
-    let range = "";
-    let warn = "";
-    let q = "low confidence";
-
-    if (device === "room"){
-      fio2 = 0.209;
-      range = "Room air baseline (sea level).";
-      q = "baseline";
-    }
-
-    if (device === "nc"){
-      // Classic teaching: 1 L ~24%, +4% per L up to 6 L (44%).
-      if (!hasFlow){
-        fio2 = 0.28;
-        range = "Enter a flow (typical 1–6 L/min).";
-        warn = "Delivered FiO₂ varies a lot with mouth breathing and minute ventilation.";
-      } else {
-        const f = clamp(flow, 0, 6);
-        const pct = (flow <= 0) ? 21 : clamp(20.9 + 4 * f, 21, 44);
-        fio2 = pct / 100;
-        range = "Typical: 1–6 L/min → ~24–44%.";
-        warn = (flow > 6) ? "Flows >6 L/min usually require a different device (and FiO₂ is still variable)." : "";
-        q = "variable device";
-      }
-    }
-
-    if (device === "simple"){
-      // Simple mask: use a linear approximation 5 L=35%, 10 L=60%
-      if (!hasFlow){
-        fio2 = 0.40;
-        range = "Typical: 5–10 L/min → ~35–60%.";
-        warn = "Avoid <5 L/min on a simple mask (CO₂ rebreathing risk).";
-      } else {
-        const f = clamp(flow, 0, 15);
-        if (flow < 5 && flow > 0) warn = "Avoid <5 L/min on a simple mask (CO₂ rebreathing risk).";
-        const pct = (flow <= 0) ? 21 : clamp(lerp(f, 5, 10, 35, 60), 21, 60);
-        fio2 = pct / 100;
-        range = "Approx model: 5 L≈35%, 10 L≈60% (variable).";
-        q = "very variable";
-      }
-    }
-
-    if (device === "partial"){
-      // Partial rebreather: rough 6 L=40%, 10 L=70%
-      if (!hasFlow){
-        fio2 = 0.50;
-        range = "Typical: 6–10 L/min → ~40–70%.";
-        warn = "Keep the reservoir bag partially inflated throughout inspiration.";
-      } else {
-        const f = clamp(flow, 0, 15);
-        const pct = (flow <= 0) ? 21 : clamp(lerp(f, 6, 10, 40, 70), 21, 75);
-        fio2 = pct / 100;
-        range = "Approx model: 6 L≈40%, 10 L≈70% (depends on seal & bag).";
-        warn = "If the bag collapses on inspiration, increase flow and check fit.";
-        q = "very variable";
-      }
-    }
-
-    if (device === "nrb"){
-      // NRB: rough 10 L=60%, 15 L=90%, cap 95%.
-      if (!hasFlow){
-        fio2 = 0.80;
-        range = "Typical: 10–15 L/min → ~60–90% (sometimes quoted up to ~95%).";
-        warn = "Ensure one-way valves function and reservoir bag stays inflated.";
-      } else {
-        const f = clamp(flow, 0, 25);
-        const pct = (flow <= 0) ? 21 : clamp(lerp(f, 10, 15, 60, 90), 21, 95);
-        fio2 = pct / 100;
-        range = "Approx model: 10 L≈60%, 15 L≈90% (seal & valve dependent).";
-        warn = (flow < 10 && flow > 0) ? "NRB usually needs ~10–15 L/min to be effective." : "Check seal and reservoir inflation.";
-        q = "variable, but higher potential";
-      }
-    }
-
-    if (device === "venturi"){
-      const pct = parseInt(venturiPctEl.value, 10);
-      fio2 = clamp(pct / 100, 0.21, 1.0);
-      range = `Fixed performance: set to ${pct}% (if correct adapter & adequate flow).`;
-      warn = "If the patient’s inspiratory demand exceeds total output, delivered FiO₂ can drop.";
-      q = "higher reliability";
-    }
-
-    formatFiO2(fio2);
-    setNotes({range, warn, q});
+  function setFiO2(f){
+    const frac = clamp(f, 0.21, 1.00);
+    fio2Text.textContent = frac.toFixed(2);
+    fio2Pct.textContent = `≈ ${Math.round(frac*100)}%`;
+    const fio2Input = document.getElementById("fio2Input");
+    if (!fio2Input.value) fio2Input.value = frac.toFixed(2);
   }
 
-  copyBtn.addEventListener('click', async () => {
-    const text = `Estimated FiO2: ${fio2Text.textContent} (${fio2Pct.textContent.replace('≈ ','')})`;
-    try{
-      await navigator.clipboard.writeText(text);
-      copyBtn.textContent = "Copied!";
-      setTimeout(()=>copyBtn.textContent="Copy", 900);
-    }catch(e){
-      alert("Copy failed. You can select and copy the result manually.");
+  function lerp(x, x0, x1, y0, y1){
+    if (x1 === x0) return y0;
+    const t = (x - x0) / (x1 - x0);
+    return y0 + t * (y1 - y0);
+  }
+
+  function estimateFiO2(){
+    const device = deviceEl.value;
+    const flowRaw = parseFloat(flowEl.value);
+    const hasFlow = isNum(flowRaw);
+    const flow = hasFlow ? flowRaw : 0;
+
+    venturiExtras.classList.toggle("hidden", device !== "venturi");
+
+    let fio2 = 0.21, range="", warn="", q="low confidence";
+
+    if (device === "room"){
+      fio2 = 0.209; range="Room air baseline."; q="baseline";
+    } else if (device === "nc"){
+      if (!hasFlow){ fio2=0.28; range="Enter flow (1–6 L/min)."; warn="FiO₂ varies with MV/mouth breathing."; }
+      else {
+        const f = clamp(flow, 0, 6);
+        const pct = (flow<=0) ? 21 : clamp(20.9 + 4*f, 21, 44);
+        fio2 = pct/100;
+        range="Typical 1–6 L/min → ~24–44%.";
+        warn = (flow>6) ? "Above 6 L/min: consider different device; FiO₂ still variable." : "";
+        q="variable device";
+      }
+    } else if (device === "simple"){
+      if (!hasFlow){ fio2=0.40; range="Typical 5–10 L/min → ~35–60%."; warn="Avoid <5 L/min (rebreathing risk)."; }
+      else {
+        const f = clamp(flow, 0, 15);
+        const pct = (flow<=0) ? 21 : clamp(lerp(f,5,10,35,60), 21, 60);
+        fio2=pct/100; range="Approx: 5 L≈35%, 10 L≈60%."; q="very variable";
+        if (flow<5 && flow>0) warn="Avoid <5 L/min (rebreathing risk).";
+      }
+    } else if (device === "partial"){
+      if (!hasFlow){ fio2=0.50; range="Typical 6–10 L/min → ~40–70%."; warn="Keep reservoir bag partially inflated."; }
+      else {
+        const f = clamp(flow, 0, 15);
+        const pct = (flow<=0) ? 21 : clamp(lerp(f,6,10,40,70), 21, 75);
+        fio2=pct/100; range="Approx: 6 L≈40%, 10 L≈70%."; q="very variable";
+        warn="If bag collapses on inspiration: increase flow/check fit.";
+      }
+    } else if (device === "nrb"){
+      if (!hasFlow){ fio2=0.80; range="Typical 10–15 L/min → ~60–90%."; warn="Check one-way valves + reservoir inflation."; }
+      else {
+        const f = clamp(flow, 0, 25);
+        const pct = (flow<=0) ? 21 : clamp(lerp(f,10,15,60,90), 21, 95);
+        fio2=pct/100; range="Approx: 10 L≈60%, 15 L≈90%."; q="variable";
+        warn = (flow<10 && flow>0) ? "NRB usually needs ~10–15 L/min." : "Check seal and reservoir inflation.";
+      }
+    } else if (device === "venturi"){
+      const pct = parseInt(venturiPctEl.value,10);
+      fio2 = clamp(pct/100, 0.21, 1.0);
+      range = `Fixed: ${pct}% (with correct adapter + adequate flow).`;
+      warn="If inspiratory demand exceeds total output, delivered FiO₂ can drop.";
+      q="more reliable";
     }
+
+    setFiO2(fio2);
+    setNotes({range,warn,q});
+    updateABG();
+  }
+
+  copyBtn.addEventListener("click", async ()=>{
+    const text = `Estimated FiO2: ${fio2Text.textContent} (${fio2Pct.textContent.replace("≈ ","")})`;
+    try{ await navigator.clipboard.writeText(text); copyBtn.textContent="Copied!"; setTimeout(()=>copyBtn.textContent="Copy",900); }
+    catch(e){ alert("Copy failed."); }
   });
 
-  deviceEl.addEventListener('change', estimate);
-  flowEl.addEventListener('input', estimate);
-  venturiPctEl.addEventListener('change', estimate);
+  deviceEl.addEventListener("change", estimateFiO2);
+  flowEl.addEventListener("input", estimateFiO2);
+  venturiPctEl.addEventListener("change", estimateFiO2);
 
-  // sensible defaults
+  // ---------- ABG logic ----------
+  const el = (id)=>document.getElementById(id);
+  const scenario = el("scenario");
+  const targetSat = el("targetSat");
+  const unit = el("unit");
+  const fio2Input = el("fio2Input");
+  const phEl = el("ph");
+  const paco2El = el("paco2");
+  const hco3El = el("hco3");
+  const pao2El = el("pao2");
+  const spo2El = el("spo2");
+  const rrEl = el("rr");
+  const patmEl = el("patm");
+  const rqEl = el("rq");
+  const naEl = el("na");
+  const clEl = el("cl");
+  const albEl = el("alb");
+  const lacEl = el("lac");
+  const fio2BEl = el("fio2B");
+  const pao2BEl = el("pao2B");
+  const minsBEl = el("minsB");
+  const o2respEl = el("o2resp");
+  const swapABBtn = el("swapAB");
+
+  const summary = el("summary");
+  const chipsBox = el("chips");
+  const redflags = el("redflags");
+  const nivGuidance = el("nivGuidance");
+  const copy = el("copy");
+
+  function getCx(){
+    return Array.from(document.querySelectorAll(".cx")).filter(x=>x.checked).map(x=>x.value);
+  }
+
+  function setDefaultTargets(){
+    const sc = scenario.value;
+    if (!targetSat.value.trim()){
+      targetSat.value = (sc==="copd" || sc==="ohs" || sc==="nmd") ? "88–92" : "92–96";
+    }
+  }
+
+  // Boston rules helpers
+  function expHCO3RespAcid(pco2mm, chronic){
+    const d = (pco2mm - 40)/10;
+    return 24 + (chronic ? 4 : 1)*d;
+  }
+  function expHCO3RespAlk(pco2mm, chronic){
+    const d = (40 - pco2mm)/10;
+    return 24 - (chronic ? 5 : 2)*d;
+  }
+  function expPCO2Winter(hco3){ return 1.5*hco3 + 8; } // ±2
+  function expPCO2MetAlk(hco3){ return 0.7*(hco3-24) + 40; } // ±5
+  const near = (a,b,t)=>Math.abs(a-b)<=t;
+
+  // Alveolar gas equation (short form): PAO2 = FiO2*(Patm-PH2O) - PaCO2/RQ
+  function calcPAO2mm({fio2, patm, ph2o=47, paco2mm, rq=0.8}){
+    if (![fio2,patm,paco2mm,rq].every(isNum)) return NaN;
+    return fio2*(patm - ph2o) - (paco2mm/rq);
+  }
+
+  function addChip(text, tone="ok"){
+    const div = document.createElement("div");
+    div.className = "chip " + (tone==="bad" ? "bad" : tone==="warn" ? "warn" : "ok");
+    div.textContent = text;
+    chipsBox.appendChild(div);
+  }
+
+  function buildNIVText(sc, flags){
+    const lines = [];
+    if (sc==="copd" || sc==="ohs" || sc==="nmd"){
+      lines.push("Hypercapnic-risk pathway (educational):");
+      lines.push("• Typical initial ranges: EPAP ~3–6 cmH₂O; IPAP ~10–15 cmH₂O (increase in small steps if CO₂/pH not improving and tolerated).");
+      lines.push("• If oxygenation poor: adjust FiO₂ and/or EPAP; if EPAP raised, often raise IPAP to preserve driving pressure.");
+      lines.push("• Reassess early (often within 1–2 hours): clinical WOB + ABG trends.");
+      lines.push("• SpO₂ target: 88–92 in COPD/hypercapnic risk unless instructed otherwise.");
+    } else if (sc==="cpo"){
+      lines.push("Cardiogenic pulmonary oedema (educational):");
+      lines.push("• Common approach: CPAP ~5–10 cmH₂O, titrate up if needed and BP tolerates.");
+      lines.push("• Watch BP and perfusion closely.");
+    } else if (sc==="hypox"){
+      lines.push("De novo hypoxemic failure (educational caution):");
+      lines.push("• NIV failure risk higher (pneumonia/ARDS). Consider HFNC and early ICU input.");
+      lines.push("• If NIV attempted: monitored setting + clear early failure criteria.");
+    } else if (sc==="lactic"){
+      lines.push("Metabolic (lactic) acidosis focus (educational):");
+      lines.push("Core principle: NIV does NOT fix lactate; treat the cause (shock/sepsis/hypoperfusion).");
+      lines.push("If NIV is used as a short bridge (selected, cooperative patients) to unload WOB:");
+      lines.push("• Keep EPAP low unless oxygenation requires it: ~3–5 cmH₂O.");
+      lines.push("• Use modest pressure support initially: ~5–10 cmH₂O, titrate to reduce WOB while preserving high minute ventilation.");
+      lines.push("• Avoid anything that causes hypoventilation (excess sedation, abrupt drops in RR/MV).");
+      lines.push("• Recheck early (≈30–60 min): pH/PaCO₂ trajectory + mental status/perfusion.");
+      lines.push("Escalate early if compensation fails (rising PaCO₂, worsening pH, fatigue, deterioration).");
+    } else {
+      lines.push("General (educational):");
+      lines.push("• ABG alone can’t choose CPAP vs BiPAP safely—use scenario + trajectory + contraindications.");
+    }
+
+    if (flags.cx.length){
+      lines.push("");
+      lines.push("Caution: contraindication flags checked → NIV may be unsafe; senior/ICU review recommended.");
+    }
+
+    return lines.join("\n");
+  }
+
+  function computeO2Response({u, fio2A, pao2A, fio2B, pao2B, paco2mm, patmMM, rq}){
+    const out = { ok:false, text:"Enter Point B values to compute response.", tag:null, refractory:false };
+
+    if (!isNum(fio2A) || !isNum(pao2A) || !isNum(fio2B) || !isNum(pao2B)) return out;
+
+    const paA = toMMHg(pao2A, u);
+    const paB = toMMHg(pao2B, u);
+    const dF = fio2B - fio2A;
+    const dPa = paB - paA;
+
+    if (Math.abs(dF) < 0.05){
+      out.ok = true;
+      out.text = `ΔFiO₂ is small (${fmt(dF,2)}). The “response test” isn’t meaningful unless FiO₂ changes enough.`;
+      out.tag = { label:"Small ΔFiO₂", tone:"warn" };
+      return out;
+    }
+
+    const pfA = paA / fio2A;
+    const pfB = paB / fio2B;
+    const slope = dPa / dF; // mmHg per FiO2 unit
+    const slopePer10 = slope * 0.10;
+
+    let pao2AlvA = NaN, pao2AlvB = NaN, aAA = NaN, aAB = NaN;
+    if (isNum(paco2mm)){
+      pao2AlvA = calcPAO2mm({fio2:fio2A, patm:patmMM, paco2mm, rq});
+      pao2AlvB = calcPAO2mm({fio2:fio2B, patm:patmMM, paco2mm, rq});
+      if (isNum(pao2AlvA)) aAA = paA / pao2AlvA;
+      if (isNum(pao2AlvB)) aAB = paB / pao2AlvB;
+    }
+
+    // Heuristics:
+    // - Oxygen responsive: meaningful PaO2 rise and/or P/F improves, especially when moving to higher FiO2
+    // - Oxygen refractory: FiO2 high (>=0.8) but PaO2 remains low and rise is minimal → shunt-like more likely
+    const highFi = fio2B >= 0.80;
+    const lowPaAtHighFi = highFi && paB < 100; // mmHg heuristic
+    const smallRise = dPa < 30; // mmHg heuristic
+    const veryLowAA = isNum(aAB) && aAB < 0.30;
+
+    let interpretation = "Indeterminate response.";
+    let tag = { label:"O₂ response indeterminate", tone:"warn" };
+
+    if (lowPaAtHighFi && (smallRise || veryLowAA)){
+      interpretation = "O₂-refractory pattern: poor PaO₂ response despite high FiO₂ → shunt-like physiology more likely (heuristic).";
+      tag = { label:"O₂ refractory (shunt-like)", tone:"bad" };
+      out.refractory = true;
+    } else if (dPa >= 60 || (pfB - pfA) >= 50 || slopePer10 >= 30){
+      interpretation = "O₂-responsive pattern: PaO₂ rises meaningfully with higher FiO₂ → V/Q mismatch more likely than true shunt (heuristic).";
+      tag = { label:"O₂ responsive (V/Q-likely)", tone:"ok" };
+    }
+
+    out.ok = true;
+    out.tag = tag;
+
+    out.text =
+`Point A: FiO₂ ${fmt(fio2A,2)}, PaO₂ ${Math.round(paA)} mmHg
+Point B: FiO₂ ${fmt(fio2B,2)}, PaO₂ ${Math.round(paB)} mmHg
+ΔFiO₂ ${fmt(dF,2)}, ΔPaO₂ ${Math.round(dPa)} mmHg
+Response slope: ~${Math.round(slope)} mmHg per FiO₂ (≈${Math.round(slopePer10)} mmHg per +0.10 FiO₂)
+P/F A→B: ${Math.round(pfA)} → ${Math.round(pfB)} mmHg${isNum(aAB) ? `\na/A A→B: ${fmt(aAA,2)} → ${fmt(aAB,2)}` : ""}
+
+Interpretation: ${interpretation}`;
+
+    return out;
+  }
+
+  swapABBtn.addEventListener("click", ()=>{
+    const fio2A = fio2Input.value, pao2A = pao2El.value;
+    fio2Input.value = fio2BEl.value || fio2A;
+    pao2El.value = pao2BEl.value || pao2A;
+    fio2BEl.value = fio2A;
+    pao2BEl.value = pao2A;
+    updateABG();
+  });
+
+  function updateABG(){
+    setDefaultTargets();
+
+    const sc = scenario.value;
+    const u = unit.value;
+
+    const ph = parseFloat(phEl.value);
+    const paco2 = parseFloat(paco2El.value);
+    const hco3 = parseFloat(hco3El.value);
+    const pao2 = parseFloat(pao2El.value);
+    const fio2 = parseFloat(fio2Input.value);
+
+    const spo2 = parseFloat(spo2El.value);
+    const rr = parseFloat(rrEl.value);
+
+    const patmRaw = parseFloat(patmEl.value);
+    const rqRaw = parseFloat(rqEl.value);
+
+    const na = parseFloat(naEl.value);
+    const cl = parseFloat(clEl.value);
+    const alb = parseFloat(albEl.value);
+    const lac = parseFloat(lacEl.value);
+
+    const fio2B = parseFloat(fio2BEl.value);
+    const pao2B = parseFloat(pao2BEl.value);
+    const minsB = parseFloat(minsBEl.value);
+
+    const paco2mm = isNum(paco2) ? toMMHg(paco2, u) : NaN;
+    const pao2mm = isNum(pao2) ? toMMHg(pao2, u) : NaN;
+
+    // defaults
+    const patmDefault = (u==="mmhg") ? 760 : 101.3;
+    const patm = isNum(patmRaw) ? patmRaw : patmDefault;
+    const patmMM = (u==="mmhg") ? patm : toMMHg(patm, "kpa");
+    const rq = isNum(rqRaw) ? rqRaw : 0.80;
+
+    chipsBox.innerHTML = "";
+
+    // Oxygenation indices
+    let pf = NaN, sf = NaN, pao2Alv = NaN, aa = NaN, aA = NaN;
+    const fio2Valid = isNum(fio2) && fio2 >= 0.21 && fio2 <= 1.0;
+    if (fio2Valid && isNum(pao2mm)) pf = pao2mm / fio2;
+    if (fio2Valid && isNum(spo2)) sf = spo2 / fio2;
+
+    if (fio2Valid && isNum(paco2mm)){
+      pao2Alv = calcPAO2mm({fio2, patm: patmMM, paco2mm, rq});
+      if (isNum(pao2mm) && isNum(pao2Alv)){
+        aa = pao2Alv - pao2mm;
+        aA = pao2mm / pao2Alv;
+      }
+    }
+
+    // Acid-base + compensation
+    const acidemia = isNum(ph) && ph < 7.35;
+    const alkalemia = isNum(ph) && ph > 7.45;
+    const hypercap = isNum(paco2mm) && paco2mm > 45;
+    const hypocap = isNum(paco2mm) && paco2mm < 35;
+    const hco3Low = isNum(hco3) && hco3 < 22;
+    const hco3High = isNum(hco3) && hco3 > 26;
+
+    let primary = "Undetermined (need pH + PaCO₂ + HCO₃⁻)";
+    let comp = [];
+    let mixed = [];
+
+    if (isNum(ph) && isNum(paco2mm) && isNum(hco3)){
+      if (acidemia){
+        if (hypercap && !hco3Low) primary = "Primary respiratory acidosis likely";
+        else if (hco3Low && !hypercap) primary = "Primary metabolic acidosis likely";
+        else if (hypercap && hco3Low) primary = "Mixed respiratory + metabolic acidosis possible";
+        else primary = "Acidemia with unclear driver";
+      } else if (alkalemia){
+        if (hypocap && !hco3High) primary = "Primary respiratory alkalosis likely";
+        else if (hco3High && !hypocap) primary = "Primary metabolic alkalosis likely";
+        else if (hypocap && hco3High) primary = "Mixed respiratory + metabolic alkalosis possible";
+        else primary = "Alkalemia with unclear driver";
+      } else {
+        if (hypercap && hco3High) primary = "Compensated respiratory acidosis pattern (possible chronic CO₂ retention)";
+        else if (hypocap && hco3Low) primary = "Compensated respiratory alkalosis pattern";
+        else primary = "Near-normal pH → mixed disorder possible";
+      }
+
+      if (hypercap){
+        const expA = expHCO3RespAcid(paco2mm,false);
+        const expC = expHCO3RespAcid(paco2mm,true);
+        comp.push(`Resp acidosis: expected HCO₃⁻ acute≈${fmt(expA,1)} or chronic≈${fmt(expC,1)}`);
+        if (!near(hco3, expA, 2) && !near(hco3, expC, 3)){
+          if (hco3 < expA - 2) mixed.push("HCO₃⁻ lower than expected → extra metabolic acidosis likely");
+          if (hco3 > expC + 3) mixed.push("HCO₃⁻ higher than expected → extra metabolic alkalosis likely");
+        }
+      }
+      if (hypocap){
+        const expA = expHCO3RespAlk(paco2mm,false);
+        const expC = expHCO3RespAlk(paco2mm,true);
+        comp.push(`Resp alkalosis: expected HCO₃⁻ acute≈${fmt(expA,1)} or chronic≈${fmt(expC,1)}`);
+        if (!near(hco3, expA, 2) && !near(hco3, expC, 3)){
+          if (hco3 < expC - 3) mixed.push("HCO₃⁻ much lower than expected → extra metabolic acidosis likely");
+          if (hco3 > expA + 2) mixed.push("HCO₃⁻ higher than expected → extra metabolic alkalosis likely");
+        }
+      }
+      if (hco3Low){
+        const exp = expPCO2Winter(hco3);
+        comp.push(`Met acidosis (Winter): expected PaCO₂≈${fmt(exp,1)} mmHg (±2)`);
+        if (isNum(paco2mm)){
+          if (paco2mm > exp + 2) mixed.push("PaCO₂ higher than expected → ventilatory failure/concurrent resp acidosis");
+          if (paco2mm < exp - 2) mixed.push("PaCO₂ lower than expected → concurrent resp alkalosis");
+        }
+      }
+      if (hco3High){
+        const exp = expPCO2MetAlk(hco3);
+        comp.push(`Met alkalosis: expected PaCO₂≈${fmt(exp,1)} mmHg (±5)`);
+        if (isNum(paco2mm)){
+          if (paco2mm > exp + 5) mixed.push("PaCO₂ higher than expected → concurrent resp acidosis");
+          if (paco2mm < exp - 5) mixed.push("PaCO₂ lower than expected → concurrent resp alkalosis");
+        }
+      }
+    }
+
+    // Anion gap (optional)
+    let ag = NaN, agCorr = NaN;
+    if (isNum(na) && isNum(cl) && isNum(hco3)){
+      ag = na - (cl + hco3);
+      if (isNum(alb)) agCorr = ag + 2.5*(4.0 - alb);
+    }
+
+    // Two-point oxygen response (if provided)
+    const o2r = computeO2Response({
+      u, fio2A: fio2, pao2A: pao2, fio2B, pao2B,
+      paco2mm, patmMM, rq
+    });
+    o2respEl.textContent = o2r.text;
+
+    // Pattern label: classic on room air; on O2 prefer indices + response
+    let rf = "Undetermined (need PaO₂ + FiO₂ and CO₂/pH)";
+    let dominance = "";
+
+    if (fio2Valid && isNum(pao2mm) && isNum(paco2mm)){
+      const onO2 = fio2 > 0.21 + 1e-6;
+      const oxBadPF = isNum(pf) && pf < 300;
+      const ventBad = hypercap || (isNum(ph) && ph < 7.35 && hypercap);
+
+      if (!onO2){
+        const hypox = pao2mm < 60;
+        if (hypox && paco2mm <= 45) rf = "Type 1 pattern (hypoxemia without hypercapnia)";
+        else if (hypox && paco2mm > 45) rf = "Type 2 pattern (hypoxemia + hypercapnia)";
+        else if (!hypox && paco2mm > 45) rf = "Ventilatory failure pattern (hypercapnia) without PaO₂<60";
+        else rf = "No Type 1/2 threshold met on room air";
+      } else {
+        if (oxBadPF && !ventBad) rf = "Predominant oxygenation failure on O₂ (V/Q mismatch or shunt-like pattern)";
+        else if (ventBad && !oxBadPF) rf = "Predominant ventilatory failure (CO₂ retention) with lesser oxygenation deficit";
+        else if (oxBadPF && ventBad) rf = "Combined oxygenation + ventilatory failure (mixed pattern)";
+        else rf = "No major oxygenation/ventilatory failure by indices (interpret clinically)";
+
+        if (o2r.ok){
+          if (o2r.refractory) rf += " + O₂-response suggests shunt-like physiology (heuristic)";
+          else if (o2r.tag && o2r.tag.tone==="ok") rf += " + O₂-response suggests V/Q mismatch more likely (heuristic)";
+        }
+      }
+
+      // Dominance heuristic
+      let oxScore = 0, ventScore = 0;
+      if (isNum(pf)){
+        if (pf < 100) oxScore += 3;
+        else if (pf < 200) oxScore += 2;
+        else if (pf < 300) oxScore += 1;
+      }
+      if (isNum(aA)){
+        if (aA < 0.25) oxScore += 3;
+        else if (aA < 0.40) oxScore += 2;
+        else if (aA < 0.60) oxScore += 1;
+      }
+      if (paco2mm > 70) ventScore += 3;
+      else if (paco2mm > 60) ventScore += 2;
+      else if (paco2mm > 45) ventScore += 1;
+
+      if (oxScore > ventScore) dominance = "Dominant: oxygenation deficit > ventilatory failure (heuristic).";
+      else if (ventScore > oxScore) dominance = "Dominant: ventilatory failure > oxygenation deficit (heuristic).";
+      else dominance = "Dominance unclear (heuristic).";
+    }
+
+    // Red flags
+    const flags = { cx: getCx() };
+    let red = "";
+    if (flags.cx.length) red += "• Contraindication/caution flags ticked → NIV may be unsafe; senior/ICU review.\n";
+    if (isNum(ph) && ph < 7.25) red += "• pH < 7.25: high-risk physiology; early senior/ICU involvement.\n";
+    if (isNum(rr) && rr >= 35) red += "• RR ≥ 35 suggests severe distress/tiring risk.\n";
+    if (isNum(pf) && pf < 150) red += "• Very low P/F (<150): significant oxygenation failure; consider ICU pathway.\n";
+    if (o2r.ok && o2r.refractory) red += "• O₂-refractory pattern in response test: consider significant shunt-like physiology; escalate assessment.\n";
+    if (sc==="lactic" && isNum(ph) && ph < 7.20) red += "• Severe metabolic acidosis: avoid hypoventilation; compensation failure is dangerous.\n";
+    if (!red) red = "• No automatic red flags triggered — still reassess frequently and use trajectory + clinical context.\n";
+    redflags.textContent = red;
+
+    // Chips
+    if (sc==="copd") addChip("COPD target 88–92", "ok");
+    if (isNum(ph) && ph < 7.25) addChip("pH < 7.25", "bad");
+    else if (isNum(ph) && ph < 7.35) addChip("Acidemia", "warn");
+    if (hypercap) addChip("Hypercapnia", "warn");
+    if (isNum(pf) && pf < 200) addChip("P/F < 200", "bad");
+    if (isNum(aA) && aA < 0.4) addChip("Low a/A", "warn");
+    if (isNum(aa) && aa > 200) addChip("High A–a", "warn");
+    if (mixed.length) addChip("Mixed disorder possible", "warn");
+    if (isNum(lac) && lac >= 2) addChip("Lactate elevated", "warn");
+    if (isNum(agCorr) && agCorr >= 16) addChip("High AG (corr)", "warn");
+    if (flags.cx.length) addChip(`NIV caution flags: ${flags.cx.length}`, "bad");
+    if (o2r.ok && o2r.tag) addChip(o2r.tag.label, o2r.tag.tone);
+
+    // Summary text
+    const lines = [];
+    lines.push(`Scenario: ${sc}`);
+    lines.push(`Target SpO₂: ${targetSat.value || "—"}%`);
+    lines.push("");
+    if (isNum(ph)) lines.push(`pH: ${fmt(ph,2)}`);
+    if (isNum(paco2mm)) lines.push(`PaCO₂: ${Math.round(paco2mm)} mmHg (${fmt(fromMMHg(paco2mm,u),1)} ${u})`);
+    if (isNum(hco3)) lines.push(`HCO₃⁻: ${fmt(hco3,1)} mmol/L`);
+    if (isNum(pao2mm)) lines.push(`PaO₂: ${Math.round(pao2mm)} mmHg (${fmt(fromMMHg(pao2mm,u),1)} ${u})`);
+    if (fio2Valid) lines.push(`FiO₂ (A): ${fmt(fio2,2)}`);
+    if (isNum(spo2)) lines.push(`SpO₂: ${Math.round(spo2)}%`);
+    if (isNum(rr)) lines.push(`RR: ${Math.round(rr)}/min`);
+    if (isNum(lac)) lines.push(`Lactate: ${fmt(lac,1)}`);
+
+    if (isNum(ag)){
+      lines.push(`Anion gap: ${fmt(ag,1)}${isNum(agCorr) ? ` (albumin-corr: ${fmt(agCorr,1)})` : ""}`);
+    }
+
+    lines.push("");
+    lines.push(`Resp pattern: ${rf}`);
+    if (isNum(pf)) lines.push(`P/F: ${Math.round(pf)} mmHg`);
+    if (isNum(sf)) lines.push(`S/F: ${Math.round(sf)}`);
+    if (isNum(pao2Alv)) lines.push(`PAO₂ (calc): ${Math.round(pao2Alv)} mmHg`);
+    if (isNum(aa)) lines.push(`A–a gradient: ${Math.round(aa)} mmHg`);
+    if (isNum(aA)) lines.push(`a/A ratio: ${fmt(aA,2)}`);
+    lines.push(dominance);
+
+    if (o2r.ok && (isNum(fio2B) && isNum(pao2B))){
+      lines.push("");
+      lines.push(`O₂ response test:`);
+      if (isNum(minsB)) lines.push(`• Time after change: ~${Math.round(minsB)} min`);
+      lines.push(o2r.text.split("\n").map(s=>"• "+s).join("\n"));
+    }
+
+    lines.push("");
+    lines.push(`Acid–base: ${primary}`);
+    if (comp.length) lines.push(`Compensation checks: ${comp.join(" | ")}`);
+    if (mixed.length) lines.push(`Mixed flags: ${mixed.join(" | ")}`);
+
+    summary.textContent = lines.join("\n");
+
+    // NIV guidance box
+    nivGuidance.textContent = buildNIVText(sc, flags);
+  }
+
+  copy.addEventListener("click", async ()=>{
+    try{
+      await navigator.clipboard.writeText(
+        `ABG/NIV Helper (Educational)\n\n${summary.textContent}\n\nRed flags:\n${redflags.textContent}\n\nNIV guidance:\n${nivGuidance.textContent}`
+      );
+      copy.textContent="Copied!";
+      setTimeout(()=>copy.textContent="Copy", 900);
+    }catch(e){ alert("Copy failed."); }
+  });
+
+  // Event wiring
+  ["scenario","targetSat","unit","fio2Input","ph","paco2","hco3","pao2","spo2","rr","patm","rq","na","cl","alb","lac","fio2B","pao2B","minsB"]
+    .forEach(id=>el(id).addEventListener("input", updateABG));
+  ["scenario","unit"].forEach(id=>el(id).addEventListener("change", updateABG));
+  document.querySelectorAll(".cx").forEach(cb=>cb.addEventListener("change", updateABG));
+
+  // Defaults
   flowEl.value = "4";
-  estimate();
+  estimateFiO2();
+  updateABG();
 </script>
 </body>
 </html>
