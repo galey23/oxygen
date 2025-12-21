@@ -267,7 +267,7 @@
             <input id="Cl_A" type="number">
           </div>
           <div>
-            <label for "Alb_A">Albumin (g/dL)</label>
+            <label for="Alb_A">Albumin (g/dL)</label>
             <input id="Alb_A" type="number" step="0.1">
           </div>
           <div>
@@ -612,6 +612,37 @@
       });
     }
 
+    function pfMeaning(pf) {
+      if (!Number.isFinite(pf)) return 'P/F unknown (need PaO₂ and FiO₂).';
+      if (pf < 100) return `P/F ${pf.toFixed(0)} → severe hypoxemia (ARDS range).`;
+      if (pf < 200) return `P/F ${pf.toFixed(0)} → moderate hypoxemia; NIV/PEEP support often needed.`;
+      if (pf < 300) return `P/F ${pf.toFixed(0)} → mild hypoxemia; monitor response.`;
+      return `P/F ${pf.toFixed(0)} → near-normal oxygenation on given FiO₂.`;
+    }
+
+    function aagMeaning(aag) {
+      if (!Number.isFinite(aag)) return 'A–a unknown (need FiO₂, PaO₂, PaCO₂).';
+      if (aag < 15) return `A–a ${aag.toFixed(0)} mmHg → within normal range (young adult).`;
+      if (aag < 30) return `A–a ${aag.toFixed(0)} mmHg → mildly elevated; consider V/Q scatter or early disease.`;
+      if (aag < 50) return `A–a ${aag.toFixed(0)} mmHg → elevated; impaired gas transfer/V/Q mismatch likely.`;
+      return `A–a ${aag.toFixed(0)} mmHg → markedly elevated; shunt-like physiology or severe V/Q mismatch.`;
+    }
+
+    function aARatioMeaning(ratio) {
+      if (!Number.isFinite(ratio)) return 'a/A unknown (need FiO₂, PaO₂, PaCO₂).';
+      if (ratio < 0.15) return `a/A ${ratio.toFixed(2)} → severe shunt-like physiology or diffusion limitation.`;
+      if (ratio < 0.30) return `a/A ${ratio.toFixed(2)} → markedly reduced transfer efficiency.`;
+      if (ratio < 0.50) return `a/A ${ratio.toFixed(2)} → moderately reduced; V/Q mismatch likely.`;
+      return `a/A ${ratio.toFixed(2)} → near-normal transfer efficiency for given FiO₂.`;
+    }
+
+    function hacorMeaning(score) {
+      if (!Number.isFinite(score)) return 'HACOR not available.';
+      if (score <= 4) return `HACOR ${score} → lower risk of NIV failure in COPD cohorts.`;
+      if (score <= 8) return `HACOR ${score} → intermediate risk; close monitoring recommended.`;
+      return `HACOR ${score} → high risk of NIV failure; early escalation planning advised.`;
+    }
+
     function analyseA() {
       const units = document.getElementById('units').value;
       const pH = num('pH_A');
@@ -637,6 +668,15 @@
       lines.push(acid.text);
       if (ag) lines.push(`Anion gap: ${ag.ag.toFixed(1)}${Number.isFinite(ag.agCorr) && ag.agCorr !== ag.ag ? ` (albumin-corrected ${ag.agCorr.toFixed(1)})` : ''}`);
       if (hacor) lines.push(`HACOR score: ${hacor.total}`);
+      lines.push('');
+      // Interpretive notes
+      const pfMid = Number.isFinite(indices.pfLow) && Number.isFinite(indices.pfHigh) ? (indices.pfLow + indices.pfHigh) / 2 : NaN;
+      const aagMid = Number.isFinite(indices.AAGmin) && Number.isFinite(indices.AAGmax) ? (indices.AAGmin + indices.AAGmax) / 2 : NaN;
+      const aAMid = Number.isFinite(indices.aAmin) && Number.isFinite(indices.aAmax) ? (indices.aAmin + indices.aAmax) / 2 : NaN;
+      lines.push(pfMeaning(pfMid));
+      lines.push(aagMeaning(aagMid));
+      lines.push(aARatioMeaning(aAMid));
+      if (hacor) lines.push(hacorMeaning(hacor.total));
       document.getElementById('resultA').textContent = lines.join('\n');
 
       const niv = [];
@@ -744,6 +784,14 @@
       if (Number.isFinite(indices.pfLow)) trend.push(`P/F: ${indices.pfLow.toFixed(0)}–${indices.pfHigh.toFixed(0)} mmHg`);
       trend.push('');
       trend.push(acid.text);
+      trend.push('');
+      const pfMidB = Number.isFinite(indices.pfLow) && Number.isFinite(indices.pfHigh) ? (indices.pfLow + indices.pfHigh) / 2 : NaN;
+      const aagMidB = Number.isFinite(indices.AAGmin) && Number.isFinite(indices.AAGmax) ? (indices.AAGmin + indices.AAGmax) / 2 : NaN;
+      const aAMidB = Number.isFinite(indices.aAmin) && Number.isFinite(indices.aAmax) ? (indices.aAmin + indices.aAmax) / 2 : NaN;
+      trend.push(pfMeaning(pfMidB));
+      trend.push(aagMeaning(aagMidB));
+      trend.push(aARatioMeaning(aAMidB));
+      if (hacor) trend.push(hacorMeaning(hacor.total));
       trend.push('');
       suggestions.forEach(s => trend.push('→ ' + s));
 
