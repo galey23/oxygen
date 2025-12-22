@@ -69,10 +69,7 @@
       box-shadow: var(--shadow);
     }
     h2 { margin-top: 0; }
-    .grid {
-      display: grid;
-      gap: 12px;
-    }
+    .grid { display: grid; gap: 12px; }
     .grid.cols-3 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
     .grid.cols-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
     label { display: block; color: var(--muted); font-size: 0.92rem; margin-bottom: 4px; }
@@ -144,12 +141,17 @@
       font-size: 0.9rem;
     }
     .flex { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .disclaimer {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
   </style>
 </head>
 <body>
   <header>
-    <h1>ABG + Oxygen Device → NIV & CPAP Helper</h1>
-    <p class="lead">Bedside-style guide for respiratory failure: interpret baseline ABG, estimate FiO₂, suggest starting NIV ranges, track repeat ABGs, and flag failing NIV trials.</p>
+    <h1>ABG + Oxygen Device → NIV, CPAP & HFNC Helper</h1>
+    <p class="lead">Interpret baseline ABG, estimate FiO₂, suggest *specific* starting HFNC/CPAP/BiPAP settings (with why + confidence), track repeat ABGs, and flag failing trials.</p>
   </header>
 
   <main class="wrap">
@@ -163,7 +165,7 @@
       <div class="flex" style="justify-content: space-between; align-items: baseline;">
         <div>
           <h2>Section A · Baseline ABG & oxygen device</h2>
-          <p class="muted">Enter the initial ABG on a known device (or room air). The helper estimates FiO₂, interprets acid–base status and gives starting NIV/CPAP ranges with red flags.</p>
+          <p class="muted">Enter the initial ABG on a known device (or room air). The helper estimates FiO₂, interprets oxygenation + acid–base and suggests specific starting settings.</p>
         </div>
         <div class="actions">
           <button class="secondary" onclick="fillExampleA()">Example A</button>
@@ -201,7 +203,7 @@
           </select>
         </div>
         <div>
-          <label for="heightA">Height (cm)</label>
+          <label for="heightA">Height (cm) (optional)</label>
           <input id="heightA" type="number" step="0.5" placeholder="e.g., 170">
         </div>
       </div>
@@ -209,18 +211,23 @@
       <div class="grid cols-3">
         <div>
           <label for="deviceA">Device at ABG</label>
-          <select id="deviceA">
+          <select id="deviceA" onchange="handleDeviceChangeA()">
             <option value="ra">Room air</option>
             <option value="nc">Nasal cannula</option>
             <option value="simple">Simple mask</option>
             <option value="nrb">Non-rebreather</option>
-            <option value="venturi">Venturi / HFNC (set FiO₂)</option>
+            <option value="venturi">Venturi (set FiO₂)</option>
+            <option value="hfnc">HFNC (set FiO₂ + flow)</option>
             <option value="niv">NIV/CPAP (set FiO₂)</option>
           </select>
         </div>
         <div>
           <label for="flowFiO2A">Flow (L/min) or FiO₂ (%)</label>
-          <input id="flowFiO2A" type="number" step="0.1" placeholder="e.g., 4 or 40">
+          <input id="flowFiO2A" type="number" step="0.1" placeholder="e.g., 4 (NC) or 40 (FiO₂%)">
+        </div>
+        <div id="hfncFlowA_wrap" class="hidden">
+          <label for="hfncFlowA">HFNC flow (L/min)</label>
+          <input id="hfncFlowA" type="number" step="1" placeholder="e.g., 50">
         </div>
         <div>
           <label for="noteA">Device notes (optional)</label>
@@ -298,9 +305,9 @@
           <div id="flagsA" class="chips"></div>
         </div>
         <div class="card">
-          <div class="pill">NIV / CPAP suggestions</div>
-          <pre id="nivA" class="result muted">Will populate with suggested starting ranges and rationale.</pre>
-          <div id="chipsA" class="chips"></div>
+          <div class="pill">Respiratory support recommendation</div>
+          <pre id="supportA" class="result muted">Will populate with: WHAT + WHY + CONFIDENCE.</pre>
+          <div id="supportChipsA" class="chips"></div>
         </div>
       </div>
     </div>
@@ -309,7 +316,7 @@
       <div class="flex" style="justify-content: space-between; align-items: baseline;">
         <div>
           <h2>Section B · Repeat ABG & response</h2>
-          <p class="muted">Enter the repeat ABG and time on therapy. The helper compares trends, flags failing NIV logic, suggests adjustments, and comments on V/Q vs shunt-like patterns.</p>
+          <p class="muted">Enter the repeat ABG and time on therapy. The helper compares trends, flags failing trial logic, and suggests *specific* adjustments.</p>
         </div>
         <div class="actions">
           <button class="secondary" onclick="fillExampleB()">Example B</button>
@@ -324,7 +331,7 @@
         </div>
         <div>
           <label for="therapyB">Therapy device during repeat</label>
-          <select id="therapyB">
+          <select id="therapyB" onchange="handleTherapyChangeB()">
             <option value="niv">BiPAP/NIV</option>
             <option value="cpap">CPAP</option>
             <option value="hfnc">HFNC</option>
@@ -334,14 +341,18 @@
           </select>
         </div>
         <div>
-          <label for="settingsB">NIV settings (optional)</label>
-          <input id="settingsB" placeholder="e.g., IPAP 14 / EPAP 5">
+          <label for="settingsB">Settings (optional)</label>
+          <input id="settingsB" placeholder="e.g., IPAP 14 / EPAP 5 or CPAP 10">
+        </div>
+        <div id="hfncFlowB_wrap" class="hidden">
+          <label for="hfncFlowB">HFNC flow (L/min)</label>
+          <input id="hfncFlowB" type="number" step="1" placeholder="e.g., 55">
         </div>
       </div>
 
       <div class="grid cols-3">
         <div>
-          <label for="FiO2_B">FiO₂ (preferred) or flow (%)</label>
+          <label for="FiO2_B">FiO₂ (%) (preferred)</label>
           <input id="FiO2_B" type="number" placeholder="e.g., 35">
         </div>
         <div>
@@ -410,7 +421,7 @@
       <div class="flex" style="justify-content: space-between; align-items: baseline;">
         <div>
           <h2>Summary</h2>
-          <p class="muted">Narrative handover: baseline interpretation, initial NIV plan, repeat response, and next steps.</p>
+          <p class="muted">Narrative handover: baseline interpretation, initial plan, repeat response, and next steps.</p>
         </div>
         <div class="actions">
           <button class="secondary" onclick="copySummary()">Copy summary</button>
@@ -420,6 +431,10 @@
         <div class="pill">Handover narrative</div>
         <pre id="summary" class="result muted">Perform Sections A and B to generate a summary.</pre>
       </div>
+    </div>
+
+    <div class="disclaimer">
+      <strong>Important:</strong> This is an educational decision-support aid, not a protocol. Always apply local guidance, contraindications, and senior/ICU input where appropriate.
     </div>
   </main>
 
@@ -439,6 +454,16 @@
       custom.classList.toggle('hidden', document.getElementById('targetSpO2').value !== 'custom');
     }
 
+    function handleDeviceChangeA() {
+      const dev = document.getElementById('deviceA').value;
+      document.getElementById('hfncFlowA_wrap').classList.toggle('hidden', dev !== 'hfnc');
+    }
+
+    function handleTherapyChangeB() {
+      const t = document.getElementById('therapyB').value;
+      document.getElementById('hfncFlowB_wrap').classList.toggle('hidden', t !== 'hfnc');
+    }
+
     function num(id) {
       const v = document.getElementById(id).value;
       if (v === '') return NaN;
@@ -451,12 +476,19 @@
       return units === 'kpa' ? v * 7.50062 : v;
     }
 
+    function getTargetSpO2Text() {
+      const sel = document.getElementById('targetSpO2').value;
+      if (sel === 'custom') return (document.getElementById('spo2Custom').value || 'custom');
+      return sel;
+    }
+
+    // FiO2 estimation
     function estimateFiO2(device, flowFi) {
       if (device === 'ra') return { min: 0.21, max: 0.21, info: 'Room air' };
       if (!Number.isFinite(flowFi)) return { min: NaN, max: NaN, info: 'Flow/FiO₂ missing' };
       if (flowFi <= 0) return { min: NaN, max: NaN, info: 'Flow/FiO₂ must be > 0' };
 
-      // If user entered FiO₂ as % (>=22) treat as set
+      // If user entered FiO2 as % (>=22) treat as set
       if (flowFi >= 22) {
         const f = Math.min(1, Math.max(0.21, flowFi / 100));
         return { min: f, max: f, info: 'Set FiO₂' };
@@ -472,8 +504,9 @@
       if (device === 'nrb') {
         return { min: Math.min(1, 0.60 + 0.01 * (L - 10)), max: Math.min(1, 0.80 + 0.02 * (L - 10)), info: 'NRB approximation' };
       }
-      // Venturi/HFNC/NIV expect FiO2 set; user should enter FiO2 %
-      return { min: NaN, max: NaN, info: 'Set FiO₂ required for this device' };
+
+      // Venturi/HFNC/NIV: must input FiO2 %
+      return { min: NaN, max: NaN, info: 'For Venturi/HFNC/NIV please enter set FiO₂ (%)' };
     }
 
     function calcOxygenation(PaO2, PaCO2, FiMin, FiMax) {
@@ -520,36 +553,11 @@
       else if (metaAlk && respAlk) lines.push('Mixed metabolic + respiratory alkalosis');
       else lines.push('Near-normal pH / compensated / mixed pattern');
 
-      // Winters (metabolic acidosis)
       if (metaAcid) {
         const expCO2 = 1.5 * hco3 + 8;
-        if (pCO2 > expCO2 + 2) lines.push(`Winters: PaCO₂ higher than expected (${pCO2.toFixed(1)} vs ${expCO2.toFixed(1)} mmHg) → superimposed respiratory acidosis?`);
-        if (pCO2 < expCO2 - 2) lines.push(`Winters: PaCO₂ lower than expected (${pCO2.toFixed(1)} vs ${expCO2.toFixed(1)} mmHg) → respiratory alkalosis?`);
-      }
-
-      // Metabolic alkalosis expected PaCO2
-      if (metaAlk) {
-        const expCO2 = 40 + 0.7 * (hco3 - 24);
-        if (pCO2 > expCO2 + 2) lines.push('Metabolic alkalosis: PaCO₂ higher than expected (possible ventilatory failure).');
-        if (pCO2 < expCO2 - 2) lines.push('Metabolic alkalosis: PaCO₂ lower than expected (possible concurrent resp. alkalosis).');
-      }
-
-      // Respiratory acidosis expected HCO3
-      if (respAcid) {
-        const acute = 24 + 1 * (pCO2 - 40) / 10;
-        const chronic = 24 + 3.5 * (pCO2 - 40) / 10;
-        lines.push(`Resp acidosis – expected HCO₃⁻ acute ${acute.toFixed(1)} / chronic ${chronic.toFixed(1)}.`);
-        if (hco3 > chronic + 2) lines.push('HCO₃⁻ higher than expected → extra metabolic alkalosis?');
-        if (hco3 < acute - 2) lines.push('HCO₃⁻ lower than expected → extra metabolic acidosis?');
-      }
-
-      // Respiratory alkalosis expected HCO3
-      if (respAlk) {
-        const acute = 24 - 2 * (40 - pCO2) / 10;
-        const chronic = 24 - 4 * (40 - pCO2) / 10;
-        lines.push(`Resp alkalosis – expected HCO₃⁻ acute ${acute.toFixed(1)} / chronic ${chronic.toFixed(1)}.`);
-        if (hco3 > acute + 2) lines.push('HCO₃⁻ higher than expected → concomitant metabolic alkalosis?');
-        if (hco3 < chronic - 2) lines.push('HCO₃⁻ lower than expected → extra metabolic acidosis?');
+        lines.push(`Winter's: expected PaCO₂ ≈ ${expCO2.toFixed(1)} ±2 mmHg`);
+        if (pCO2 > expCO2 + 2) lines.push('→ PaCO₂ higher than expected: ventilatory failure on top of metabolic acidosis?');
+        if (pCO2 < expCO2 - 2) lines.push('→ PaCO₂ lower than expected: concurrent respiratory alkalosis?');
       }
 
       if (pH < 7.25) flags.push('pH < 7.25 (high risk)');
@@ -559,43 +567,45 @@
     }
 
     function calcHACOR(hr, pH, gcs, rr, pao2, fio2Min, fio2Max) {
+      // Simplified scoring for display; threshold logic used mainly (>5)
+      if (![hr, pH, gcs, rr, pao2, fio2Min, fio2Max].every(Number.isFinite)) return null;
+
       const hrPts = hr >= 121 ? 1 : 0;
-      let pHPts = NaN;
-      if (!Number.isFinite(pH)) pHPts = NaN;
-      else if (pH >= 7.35) pHPts = 0;
-      else if (pH >= 7.30) pHPts = 2;
-      else if (pH >= 7.25) pHPts = 3;
-      else pHPts = 4;
 
-      let gcsPts = NaN;
-      if (!Number.isFinite(gcs)) gcsPts = NaN;
-      else if (gcs >= 13) gcsPts = 0;
-      else if (gcs >= 11) gcsPts = 2;
-      else gcsPts = 5;
+      let pHPts = 0;
+      if (pH < 7.25) pHPts = 4;
+      else if (pH < 7.30) pHPts = 3;
+      else if (pH < 7.35) pHPts = 2;
 
-      let rrPts = NaN;
-      if (!Number.isFinite(rr)) rrPts = NaN;
-      else if (rr <= 30) rrPts = 0;
-      else if (rr <= 35) rrPts = 1;
-      else if (rr <= 40) rrPts = 2;
-      else rrPts = 3;
+      let gcsPts = 0;
+      if (gcs < 11) gcsPts = 10;
+      else if (gcs < 13) gcsPts = 5;
+      else if (gcs < 15) gcsPts = 2;
 
-      let pfPts = NaN;
-      if (![pao2, fio2Min, fio2Max].every(Number.isFinite)) pfPts = NaN;
-      else {
-        const pfLow = pao2 / fio2Max;
-        const pfHigh = pao2 / fio2Min;
-        const pfAvg = (pfLow + pfHigh) / 2;
-        if (pfAvg >= 201) pfPts = 0;
-        else if (pfAvg >= 176) pfPts = 2;
-        else if (pfAvg >= 151) pfPts = 3;
-        else if (pfAvg >= 126) pfPts = 4;
-        else pfPts = 5;
-      }
+      let rrPts = 0;
+      if (rr > 45) rrPts = 4;
+      else if (rr > 40) rrPts = 3;
+      else if (rr > 35) rrPts = 2;
+      else if (rr > 30) rrPts = 1;
 
-      if (![hrPts, pHPts, gcsPts, rrPts, pfPts].some(Number.isFinite)) return null;
-      const total = [hrPts, pHPts, gcsPts, rrPts, pfPts].filter(Number.isFinite).reduce((a, b) => a + b, 0);
-      return { total, pfPts, pHPts, gcsPts, rrPts, hrPts, min: total, max: total };
+      const pfLow = pao2 / fio2Max;
+      const pfHigh = pao2 / fio2Min;
+      const pfAvg = (pfLow + pfHigh) / 2;
+      let pfPts = 0;
+      if (pfAvg < 100) pfPts = 6;
+      else if (pfAvg < 126) pfPts = 5;
+      else if (pfAvg < 151) pfPts = 4;
+      else if (pfAvg < 176) pfPts = 3;
+      else if (pfAvg < 201) pfPts = 2;
+
+      const total = hrPts + pHPts + gcsPts + rrPts + pfPts;
+      return { total };
+    }
+
+    function chipClassForText(t) {
+      if (/STRONG/i.test(t)) return 'chip good';
+      if (/MODERATE/i.test(t)) return 'chip warn';
+      return 'chip bad';
     }
 
     function renderChips(containerId, items) {
@@ -604,43 +614,181 @@
       items.forEach(item => {
         const span = document.createElement('span');
         span.className = 'chip';
-        if (/HACOR|pH < 7.2|PaCO₂ > 80|Low P\/F|fails|high risk|shock|lactate/i.test(item)) span.classList.add('bad');
-        else if (/PaCO₂ > 60|A–a|flag|risk|No pH improvement|not improving|V\/Q/i.test(item)) span.classList.add('warn');
+        if (/high risk|HACOR|pH < 7\.2|PaCO₂ > 80|Low P\/F|fails/i.test(item)) span.classList.add('bad');
+        else if (/PaCO₂ > 60|A–a|risk|No pH improvement|not improving|V\/Q/i.test(item)) span.classList.add('warn');
         else span.classList.add('good');
         span.textContent = item;
         el.appendChild(span);
       });
     }
 
-    function pfMeaning(pf) {
-      if (!Number.isFinite(pf)) return 'P/F unknown (need PaO₂ and FiO₂).';
-      if (pf < 100) return `P/F ${pf.toFixed(0)} → severe hypoxemia (ARDS range).`;
-      if (pf < 200) return `P/F ${pf.toFixed(0)} → moderate hypoxemia; NIV/PEEP support often needed.`;
-      if (pf < 300) return `P/F ${pf.toFixed(0)} → mild hypoxemia; monitor response.`;
-      return `P/F ${pf.toFixed(0)} → near-normal oxygenation on given FiO₂.`;
+    function renderSupportPlan(containerId, chipsId, plan) {
+      // plan: array of {title, settings, why, confidence, next}
+      const out = [];
+      const chips = [];
+      plan.forEach((p, i) => {
+        out.push(`${i+1}) ${p.title}`);
+        out.push(`   Settings: ${p.settings}`);
+        out.push(`   Why: ${p.why}`);
+        out.push(`   Confidence: ${p.confidence}`);
+        if (p.next) out.push(`   Next: ${p.next}`);
+        out.push('');
+        chips.push(`${p.title.split('—')[0].trim()}: ${p.confidence}`);
+      });
+      document.getElementById(containerId).textContent = out.join('\n').trim() || '—';
+
+      const chipEl = document.getElementById(chipsId);
+      chipEl.innerHTML = '';
+      chips.forEach(c => {
+        const span = document.createElement('span');
+        span.className = chipClassForText(c);
+        span.textContent = c;
+        chipEl.appendChild(span);
+      });
     }
 
-    function aagMeaning(aag) {
-      if (!Number.isFinite(aag)) return 'A–a unknown (need FiO₂, PaO₂, PaCO₂).';
-      if (aag < 15) return `A–a ${aag.toFixed(0)} mmHg → within normal range (young adult).`;
-      if (aag < 30) return `A–a ${aag.toFixed(0)} mmHg → mildly elevated; consider V/Q scatter or early disease.`;
-      if (aag < 50) return `A–a ${aag.toFixed(0)} mmHg → elevated; impaired gas transfer/V/Q mismatch likely.`;
-      return `A–a ${aag.toFixed(0)} mmHg → markedly elevated; shunt-like physiology or severe V/Q mismatch.`;
+    function pfMid(indices) {
+      return (Number.isFinite(indices.pfLow) && Number.isFinite(indices.pfHigh)) ? (indices.pfLow + indices.pfHigh)/2 : NaN;
     }
 
-    function aARatioMeaning(ratio) {
-      if (!Number.isFinite(ratio)) return 'a/A unknown (need FiO₂, PaO₂, PaCO₂).';
-      if (ratio < 0.15) return `a/A ${ratio.toFixed(2)} → severe shunt-like physiology or diffusion limitation.`;
-      if (ratio < 0.30) return `a/A ${ratio.toFixed(2)} → markedly reduced transfer efficiency.`;
-      if (ratio < 0.50) return `a/A ${ratio.toFixed(2)} → moderately reduced; V/Q mismatch likely.`;
-      return `a/A ${ratio.toFixed(2)} → near-normal transfer efficiency for given FiO₂.`;
-    }
+    function buildPlanA({context, pH, PaCO2, indices, rr, targetSpO2}) {
+      const plan = [];
+      const hypercap = Number.isFinite(PaCO2) && PaCO2 > 45;
+      const acidemic = Number.isFinite(pH) && pH < 7.35;
+      const severeAcid = Number.isFinite(pH) && pH < 7.25;
+      const pf = pfMid(indices);
+      const hypox = Number.isFinite(pf) && pf < 200;
 
-    function hacorMeaning(score) {
-      if (!Number.isFinite(score)) return 'HACOR not available.';
-      if (score <= 4) return `HACOR ${score} → lower risk of NIV failure in COPD cohorts.`;
-      if (score <= 8) return `HACOR ${score} → intermediate risk; close monitoring recommended.`;
-      return `HACOR ${score} → high risk of NIV failure; early escalation planning advised.`;
+      // Defaults for specificity
+      const copdTarget = /88-92/.test(targetSpO2);
+
+      // 1) COPD / hypercapnic acidemia -> BiPAP
+      if ((context === 'copd') || (hypercap && acidemic)) {
+        const start = severeAcid ? 'IPAP 14–16 / EPAP 4–5' : 'IPAP 12–14 / EPAP 4–5';
+        plan.push({
+          title: 'BiPAP (NIV, S/T if available) — primary choice',
+          settings: `${start}; FiO₂ titrate to SpO₂ ${targetSpO2}. Typical ceiling: IPAP 20–24, EPAP 6–8 (tolerability/air leak dependent).`,
+          why: `Hypercapnia + acidemia suggests ventilatory failure. Pressure support (IPAP-EPAP) improves CO₂ clearance; EPAP helps offset intrinsic PEEP.`,
+          confidence: (context === 'copd') ? 'STRONG (best-established indication: AECOPD hypercapnic acidosis)' : 'MODERATE (hypercapnic acidosis outside COPD)',
+          next: 'Recheck ABG ~60–120 min after initiation or earlier if deteriorating; adjust IPAP +2–3 if PaCO₂ not falling or pH not rising.'
+        });
+
+        // Alternative: HFNC only if NIV not tolerated
+        plan.push({
+          title: 'HFNC — alternative if NIV not tolerated',
+          settings: `Flow 30–45 L/min; FiO₂ to target SpO₂ ${targetSpO2}.`,
+          why: `HFNC can reduce dead-space and work of breathing but is less effective than NIV for ventilatory failure.`,
+          confidence: 'WEAK–MODERATE (supportive; not a substitute for NIV in clear hypercapnic failure)',
+          next: 'If pH falls or PaCO₂ rises: escalate back to NIV or higher-level support.'
+        });
+
+        return plan;
+      }
+
+      // 2) Cardiogenic pulmonary edema -> CPAP first-line unless hypercapnic
+      if (context === 'cardio') {
+        plan.push({
+          title: 'CPAP — primary choice',
+          settings: `Start CPAP 8–10 cmH₂O; FiO₂ to SpO₂ ${targetSpO2}. Titrate CPAP +2 (typical 10–12, max ~15) if persistent distress/hypoxemia.`,
+          why: `Continuous pressure improves alveolar recruitment and reduces preload/afterload in CPO.`,
+          confidence: 'STRONG (common evidence-based application)',
+          next: 'Assess response within 30–60 min: RR, dyspnea, SpO₂, and repeat gas if needed.'
+        });
+
+        // If hypercapnia present, BiPAP
+        if (hypercap) {
+          plan.push({
+            title: 'BiPAP — if hypercapnia accompanies CPO',
+            settings: `Start IPAP 12–14 / EPAP 6–8; FiO₂ to target.`,
+            why: `Adds ventilatory support (pressure support) when CO₂ retention is present in addition to oxygenation/recruitment needs.`,
+            confidence: 'MODERATE',
+            next: 'Recheck ABG in ~1 h; titrate IPAP +2 if PaCO₂ not improving.'
+          });
+        }
+        return plan;
+      }
+
+      // 3) Hypoxemic failure (pneumonia/ARDS-like): HFNC first (if not needing immediate intubation)
+      if (context === 'hypox' || hypox) {
+        plan.push({
+          title: 'HFNC — primary choice',
+          settings: `Start Flow 50–60 L/min; start FiO₂ 0.5–0.7 then titrate to SpO₂ ${targetSpO2}.`,
+          why: `High flow provides more stable FiO₂, dead-space washout, and small PEEP effect; often improves comfort and oxygenation.`,
+          confidence: 'MODERATE–STRONG (widely recommended for acute hypoxemic respiratory failure)',
+          next: 'If FiO₂ requirement stays high (>0.6) or distress persists, consider CPAP/PEEP trial or escalation.'
+        });
+
+        plan.push({
+          title: 'CPAP — alternative / escalation step',
+          settings: `Start CPAP 8–10 cmH₂O; titrate +2 to 12–15 if oxygenation remains poor; FiO₂ as needed.`,
+          why: `Recruitment/PEEP can be more effective when shunt-like physiology dominates.`,
+          confidence: 'MODERATE',
+          next: 'Repeat ABG or reassess within 30–60 min; plan escalation early if failing.'
+        });
+
+        return plan;
+      }
+
+      // 4) Metabolic/lactic acidosis: treat cause; support oxygenation; avoid suppressing compensatory ventilation
+      if (context === 'metabolic') {
+        plan.push({
+          title: 'Primary therapy — treat cause (not ventilator settings)',
+          settings: `Resuscitation/antibiotics/source control as appropriate; oxygen to SpO₂ ${targetSpO2}.`,
+          why: `In lactic/metabolic acidosis the key problem is metabolic; respiratory alkalosis may be compensatory.`,
+          confidence: 'STRONG (principle-based, standard practice)',
+          next: 'Do not blunt compensatory ventilation; monitor fatigue and rising PaCO₂.'
+        });
+
+        plan.push({
+          title: 'HFNC — if high work of breathing but oxygenation needed',
+          settings: `Flow 40–60 L/min; FiO₂ titrate to SpO₂ ${targetSpO2}.`,
+          why: `Reduces work of breathing while allowing high minute ventilation (compensation).`,
+          confidence: 'MODERATE',
+          next: 'If tiring, altered mental state, rising PaCO₂, or worsening acidosis → escalate early.'
+        });
+
+        plan.push({
+          title: 'BiPAP — only if ventilatory fatigue/hypercapnia emerges',
+          settings: `Start IPAP 10–12 / EPAP 4–5 (avoid excessive EPAP); titrate IPAP +2 to support ventilation while preserving high RR if needed.`,
+          why: `May unload work of breathing, but must avoid reducing compensatory ventilation.`,
+          confidence: 'WEAK–MODERATE (case-by-case)',
+          next: 'Repeat gas within 30–60 min; escalate if mental state or gas exchange worsens.'
+        });
+
+        return plan;
+      }
+
+      // 5) Asthma: cautious
+      if (context === 'asthma') {
+        plan.push({
+          title: 'NIV trial — selected patients only',
+          settings: `Start IPAP 10–12 / EPAP 4–5; short trial with close monitoring; FiO₂ to target.`,
+          why: `May reduce work of breathing, but evidence is mixed and risk of delayed intubation exists.`,
+          confidence: 'WEAK',
+          next: 'Low threshold for escalation if fatigue, silent chest, worsening acidosis, or reduced consciousness.'
+        });
+
+        plan.push({
+          title: 'HFNC — supportive alternative',
+          settings: `Flow 40–60 L/min; FiO₂ to target.`,
+          why: `Comfort + stable FiO₂; does not provide true ventilatory support.`,
+          confidence: 'WEAK–MODERATE',
+          next: 'Escalate if worsening ventilation/acidemia.'
+        });
+
+        return plan;
+      }
+
+      // fallback
+      plan.push({
+        title: 'Support choice unclear from ABG alone',
+        settings: `Titrate oxygen to SpO₂ ${targetSpO2}. Consider HFNC (Flow 40–60, FiO₂ titrate) if distressed; consider NIV/CPAP based on clinical work of breathing.`,
+        why: `ABG must be interpreted with clinical context (work of breathing, consciousness, hemodynamics).`,
+        confidence: 'MODERATE',
+        next: 'Repeat gas if therapy changes or patient deteriorates.'
+      });
+
+      return plan;
     }
 
     function analyseA() {
@@ -651,93 +799,65 @@
       const HCO3 = num('HCO3_A');
       const RR = num('RR_A');
       const SpO2 = num('SpO2_A');
+
       const device = document.getElementById('deviceA').value;
       const flowFi = num('flowFiO2A');
       const FiO2 = estimateFiO2(device, flowFi);
+
       const indices = calcOxygenation(PaO2, PaCO2, FiO2.min, FiO2.max);
       const acid = analyseAcidBase(pH, PaCO2, HCO3);
       const ag = calcAnionGap(num('Na_A'), num('Cl_A'), HCO3, num('Alb_A'));
       const hacor = calcHACOR(num('HR_A'), pH, num('GCS_A'), RR, PaO2, FiO2.min, FiO2.max);
 
+      const targetSpO2 = getTargetSpO2Text();
+
       const lines = [];
+      lines.push(`SpO₂ target: ${targetSpO2}`);
       lines.push(`FiO₂ estimate: ${Number.isFinite(FiO2.min) ? (FiO2.min * 100).toFixed(0) : '—'}–${Number.isFinite(FiO2.max) ? (FiO2.max * 100).toFixed(0) : '—'}% (${FiO2.info})`);
+      if (device === 'hfnc') {
+        const f = num('hfncFlowA');
+        lines.push(`HFNC flow at ABG: ${Number.isFinite(f) ? f.toFixed(0)+' L/min' : '—'}`);
+      }
       if (Number.isFinite(indices.pfLow)) lines.push(`P/F: ${indices.pfLow.toFixed(0)}–${indices.pfHigh.toFixed(0)} mmHg`);
       if (Number.isFinite(indices.AAGmin)) lines.push(`A–a: ${indices.AAGmin.toFixed(0)}–${indices.AAGmax.toFixed(0)} mmHg`);
       if (Number.isFinite(indices.aAmin)) lines.push(`a/A: ${indices.aAmin.toFixed(2)}–${indices.aAmax.toFixed(2)}`);
       lines.push('');
       lines.push(acid.text);
       if (ag) lines.push(`Anion gap: ${ag.ag.toFixed(1)}${Number.isFinite(ag.agCorr) && ag.agCorr !== ag.ag ? ` (albumin-corrected ${ag.agCorr.toFixed(1)})` : ''}`);
-      if (hacor) lines.push(`HACOR score: ${hacor.total}`);
-      lines.push('');
-      // Interpretive notes
-      const pfMid = Number.isFinite(indices.pfLow) && Number.isFinite(indices.pfHigh) ? (indices.pfLow + indices.pfHigh) / 2 : NaN;
-      const aagMid = Number.isFinite(indices.AAGmin) && Number.isFinite(indices.AAGmax) ? (indices.AAGmin + indices.AAGmax) / 2 : NaN;
-      const aAMid = Number.isFinite(indices.aAmin) && Number.isFinite(indices.aAmax) ? (indices.aAmin + indices.aAmax) / 2 : NaN;
-      lines.push(pfMeaning(pfMid));
-      lines.push(aagMeaning(aagMid));
-      lines.push(aARatioMeaning(aAMid));
-      if (hacor) lines.push(hacorMeaning(hacor.total));
+      if (hacor) lines.push(`HACOR score: ${hacor.total} (higher risk if >5)`);
       document.getElementById('resultA').textContent = lines.join('\n');
 
-      const niv = [];
-      const hypercap = Number.isFinite(PaCO2) && PaCO2 > 50;
-      const severeAcid = Number.isFinite(pH) && pH < 7.25;
-      const hypox = Number.isFinite(indices.pfLow) && indices.pfLow < 200;
-      const height = num('heightA');
-
-      // Height-informed gentle starting pressures
-      let peepStart = 5;
-      let deltaStart = 10;
-      if (Number.isFinite(height)) {
-        if (height < 160) { peepStart = 4; deltaStart = 8; }
-        else if (height > 185) { peepStart = 6; deltaStart = 12; }
-      }
-
-      if (hypercap || severeAcid) {
-        niv.push(`NIV: start PEEP ${peepStart}–${peepStart + 1} cmH₂O, ΔPinsp ${deltaStart}–${deltaStart + 2} cmH₂O (height-adjusted).`);
-        niv.push('Raise ΔPinsp by 2–3 if CO₂ clearance is inadequate; increase PEEP/FiO₂ for oxygenation if needed.');
-      } else if (hypox) {
-        niv.push('CPAP/PEEP 5–10 cmH₂O or HFNC. If using NIV for oxygenation: PEEP 5–10 with ΔPinsp 5–10.');
-      } else {
-        niv.push('No mandatory NIV mode; use clinical judgement and trajectory.');
-      }
-
-      const rationale = [];
-      if (hypercap) rationale.push('Hypercapnia suggests ventilation-focused NIV (increase ΔPinsp).');
-      if (hypox) rationale.push('Low P/F suggests oxygenation support (increase PEEP/FiO₂).');
-      if (severeAcid) rationale.push('Acidemia increases risk of NIV failure—close monitoring.');
-
-      document.getElementById('nivA').textContent = niv.concat('', rationale).join('\n');
-
       const flags = [...acid.flags];
-      if (Number.isFinite(indices.pfLow) && indices.pfLow < 150) flags.push('Low P/F (<150)');
-      if (Number.isFinite(PaO2) && PaO2 < 55) flags.push('PaO₂ < 55 (severe hypoxemia)');
-      if (Number.isFinite(RR) && RR > 30) flags.push('RR > 30 (work of breathing)');
-      if (Number.isFinite(num('Lac_A')) && num('Lac_A') >= 2) flags.push('Lactate ≥2 (shock/stress physiology)');
-      if (hacor && hacor.total >= 5) flags.push('HACOR ≥5 (higher failure risk)');
+      const pf = pfMid(indices);
+      if (Number.isFinite(pf) && pf < 150) flags.push('Low P/F (<150)');
+      if (Number.isFinite(PaO2) && PaO2 < 55) flags.push('PaO₂ < 55');
+      if (Number.isFinite(RR) && RR > 30) flags.push('RR > 30');
+      const lac = num('Lac_A');
+      if (Number.isFinite(lac) && lac >= 2) flags.push('Lactate ≥2');
+      if (hacor && hacor.total > 5) flags.push('HACOR > 5 (higher failure risk)');
+      renderChips('flagsA', flags);
+
+      const ctx = document.getElementById('contextA').value;
+      const plan = buildPlanA({context: ctx, pH, PaCO2, indices, rr: RR, targetSpO2});
+      renderSupportPlan('supportA', 'supportChipsA', plan);
 
       renderChips('indicesA', [
-        Number.isFinite(indices.pfLow) ? `P/F ${indices.pfLow.toFixed(0)}–${indices.pfHigh.toFixed(0)}` : 'P/F unknown',
-        Number.isFinite(indices.AAGmin) ? `A–a ${indices.AAGmin.toFixed(0)}–${indices.AAGmax.toFixed(0)}` : 'A–a unknown',
+        Number.isFinite(pf) ? `P/F mid ≈ ${pf.toFixed(0)}` : 'P/F unknown',
         FiO2.info,
+        (hacor ? `HACOR ${hacor.total}` : 'HACOR n/a')
       ]);
-      renderChips('flagsA', flags);
-      renderChips('chipsA', rationale);
 
       baselineData = {
-        pH, PaCO2, PaO2, HCO3, RR, SpO2, FiO2, indices, acid, ag, hacor, flags, context: document.getElementById('contextA').value,
-        target: document.getElementById('spo2Custom').classList.contains('hidden') ? document.getElementById('targetSpO2').value : document.getElementById('spo2Custom').value || document.getElementById('targetSpO2').value,
-        note: document.getElementById('noteA').value,
-        height,
-        nivPlan: niv, rationale
+        ctx, targetSpO2, pH, PaCO2, PaO2, HCO3, RR, SpO2,
+        FiO2, indices, acid, ag, hacor, flags, plan,
+        note: document.getElementById('noteA').value
       };
 
-      document.getElementById('resultB').textContent = 'Complete Section B inputs and click “Analyse B”.';
+      document.getElementById('resultB').textContent = 'Complete Section A first. Enter repeat ABG and click “Analyse B”.';
       document.getElementById('flagsB').innerHTML = '';
       document.getElementById('vqB').textContent = 'Will summarise patterns once both ABGs are analysed.';
       document.getElementById('summary').textContent = 'Baseline analysed. Perform Section B to build a summary.';
       repeatData = null;
-      showTab('A');
     }
 
     function analyseB() {
@@ -752,11 +872,19 @@
       const RR = num('RR_B');
       const SpO2 = num('SpO2_B');
       const lactate = num('Lac_B');
+
       const FiInput = num('FiO2_B');
-      const FiB = Number.isFinite(FiInput) ? { min: Math.min(1, Math.max(0.21, FiInput / 100)), max: Math.min(1, Math.max(0.21, FiInput / 100)) } : baselineData.FiO2;
+      const FiB = Number.isFinite(FiInput)
+        ? { min: Math.min(1, Math.max(0.21, FiInput / 100)), max: Math.min(1, Math.max(0.21, FiInput / 100)), info: 'Set FiO₂ (B)' }
+        : baselineData.FiO2;
+
       const indices = calcOxygenation(PaO2, PaCO2, FiB.min, FiB.max);
       const acid = analyseAcidBase(pH, PaCO2, HCO3);
       const hacor = calcHACOR(num('HR_B'), pH, num('GCS_B'), RR, PaO2, FiB.min, FiB.max);
+
+      const therapy = document.getElementById('therapyB').value;
+      const hfncFlowB = num('hfncFlowB');
+      const targetSpO2 = baselineData.targetSpO2;
 
       const flags = [];
       if (Number.isFinite(mins) && mins >= 30) {
@@ -766,81 +894,168 @@
       }
       if (Number.isFinite(RR) && RR > 25) flags.push('RR > 25');
       if (Number.isFinite(pH) && pH < 7.20) flags.push('pH < 7.20');
-      if (hacor && hacor.total > 5) flags.push('HACOR > 5 (failure risk)');
+      if (hacor && hacor.total > 5) flags.push('HACOR > 5 (higher failure risk)');
       if (Number.isFinite(lactate) && lactate >= 2) flags.push('Elevated lactate');
 
       const suggestions = [];
-      if (Number.isFinite(PaCO2) && Number.isFinite(baselineData.PaCO2) && PaCO2 >= baselineData.PaCO2) suggestions.push('Increase ΔPinsp by 2–3 cmH₂O to improve ventilation.');
-      if (Number.isFinite(indices.pfLow) && indices.pfLow < 150) suggestions.push('Increase PEEP by 1–2 cmH₂O and/or FiO₂ to improve oxygenation.');
-      if (Number.isFinite(indices.pfLow) && Number.isFinite(baselineData.indices.pfLow) && indices.pfLow - baselineData.indices.pfLow < 20) suggestions.push('Minimal P/F improvement → reassess mask seal, recruit with EPAP/PEEP, consider escalation.');
-      if (Number.isFinite(lactate) && lactate >= 2) suggestions.push('Address shock/sepsis: source control, fluids/pressors as appropriate.');
-      if (!suggestions.length) suggestions.push('Continue current support, reassess in 15–30 min.');
+      const pf = pfMid(indices);
+      const pfBase = pfMid(baselineData.indices);
 
-      const trend = [];
-      trend.push(`Time on therapy: ${Number.isFinite(mins) ? mins.toFixed(0) + ' min' : 'unknown'}`);
-      trend.push(`pH: ${Number.isFinite(pH) ? pH.toFixed(2) : '—'} (baseline ${Number.isFinite(baselineData.pH) ? baselineData.pH.toFixed(2) : '—'})`);
-      trend.push(`PaCO₂: ${Number.isFinite(PaCO2) ? PaCO2.toFixed(1) : '—'} vs baseline ${Number.isFinite(baselineData.PaCO2) ? baselineData.PaCO2.toFixed(1) : '—'}`);
-      trend.push(`PaO₂: ${Number.isFinite(PaO2) ? PaO2.toFixed(1) : '—'} vs baseline ${Number.isFinite(baselineData.PaO2) ? baselineData.PaO2.toFixed(1) : '—'}`);
-      if (Number.isFinite(indices.pfLow)) trend.push(`P/F: ${indices.pfLow.toFixed(0)}–${indices.pfHigh.toFixed(0)} mmHg`);
-      trend.push('');
-      trend.push(acid.text);
-      trend.push('');
-      const pfMidB = Number.isFinite(indices.pfLow) && Number.isFinite(indices.pfHigh) ? (indices.pfLow + indices.pfHigh) / 2 : NaN;
-      const aagMidB = Number.isFinite(indices.AAGmin) && Number.isFinite(indices.AAGmax) ? (indices.AAGmin + indices.AAGmax) / 2 : NaN;
-      const aAMidB = Number.isFinite(indices.aAmin) && Number.isFinite(indices.aAmax) ? (indices.aAmin + indices.aAmax) / 2 : NaN;
-      trend.push(pfMeaning(pfMidB));
-      trend.push(aagMeaning(aagMidB));
-      trend.push(aARatioMeaning(aAMidB));
-      if (hacor) trend.push(hacorMeaning(hacor.total));
-      trend.push('');
-      suggestions.forEach(s => trend.push('→ ' + s));
+      function addSuggestion(title, settings, why, confidence) {
+        suggestions.push({title, settings, why, confidence});
+      }
 
-      document.getElementById('resultB').textContent = trend.join('\n');
+      // Therapy-specific titration
+      if (therapy === 'niv') {
+        if (Number.isFinite(PaCO2) && Number.isFinite(baselineData.PaCO2) && PaCO2 >= baselineData.PaCO2) {
+          addSuggestion(
+            'Increase IPAP (pressure support)',
+            'Increase IPAP by +2–3 cmH₂O (keep EPAP same); reassess comfort/leak.',
+            'PaCO₂ not improving suggests inadequate ventilation; increasing pressure support improves CO₂ clearance.',
+            'MODERATE'
+          );
+        }
+        if (Number.isFinite(pf) && pf < 150) {
+          addSuggestion(
+            'Improve oxygenation (EPAP/FiO₂)',
+            'Increase FiO₂ first; if still low SpO₂/PF, increase EPAP by +1–2 and also raise IPAP to maintain the same ΔP.',
+            'Low PF suggests shunt/V-Q mismatch; EPAP/PEEP recruits alveoli while FiO₂ increases delivered oxygen.',
+            'MODERATE'
+          );
+        }
+      } else if (therapy === 'cpap') {
+        if (Number.isFinite(pf) && pf < 200) {
+          addSuggestion(
+            'Increase CPAP',
+            'Increase CPAP by +2 cmH₂O (typical 10–12, up to ~15) and titrate FiO₂ to target.',
+            'Persistent hypoxemia on CPAP suggests under-recruitment; more pressure can improve alveolar recruitment.',
+            'MODERATE'
+          );
+        }
+      } else if (therapy === 'hfnc') {
+        if (Number.isFinite(RR) && RR > 25) {
+          addSuggestion(
+            'Increase HFNC flow',
+            'Increase flow toward 60 L/min (or +5–10 L/min) if tolerated; maintain humidification.',
+            'Higher flow reduces work of breathing and improves stability of FiO₂.',
+            'MODERATE–STRONG'
+          );
+        }
+        addSuggestion(
+          'Adjust FiO₂',
+          `Titrate FiO₂ to maintain SpO₂ ${targetSpO2}. If FiO₂ >0.6 and no improvement, consider escalation.`,
+          'High FiO₂ requirement with poor response suggests more severe V/Q mismatch or shunt physiology.',
+          'MODERATE'
+        );
+      } else {
+        // Oxygen masks etc
+        addSuggestion(
+          'Oxygen titration',
+          `Adjust FiO₂/flow to keep SpO₂ ${targetSpO2}; reassess device fit and seal.`,
+          'Poor fit/leak causes delivered FiO₂ to be lower than expected.',
+          'MODERATE'
+        );
+      }
+
+      // Global “failing trial” pattern
+      if (Number.isFinite(pfBase) && Number.isFinite(pf) && (pf - pfBase) < 20 && Number.isFinite(mins) && mins >= 60) {
+        addSuggestion(
+          'Escalation planning',
+          'Minimal improvement after ~1 hour → check mask leak, secretion load, fatigue; consider higher-level support/ICU review.',
+          'Early non-response is a common predictor of failure for non-invasive strategies.',
+          'MODERATE'
+        );
+      }
+
+      // Metabolic/lactic context reinforcement
+      if (baselineData.ctx === 'metabolic' && Number.isFinite(lactate) && lactate >= 2) {
+        addSuggestion(
+          'Treat metabolic driver',
+          'Prioritise shock/sepsis management (fluids/pressors, antibiotics, source control as appropriate). Maintain compensatory ventilation.',
+          'Ventilation support doesn’t fix lactic acidosis; underlying perfusion/oxygen delivery must be corrected.',
+          'STRONG'
+        );
+      }
+
+      // Render Section B result text
+      const out = [];
+      out.push(`Time on therapy: ${Number.isFinite(mins) ? mins.toFixed(0)+' min' : '—'}`);
+      out.push(`ABG B: pH ${Number.isFinite(pH)?pH.toFixed(2):'—'}, PaCO₂ ${Number.isFinite(PaCO2)?PaCO2.toFixed(1):'—'}, PaO₂ ${Number.isFinite(PaO2)?PaO2.toFixed(1):'—'}, HCO₃ ${Number.isFinite(HCO3)?HCO3.toFixed(1):'—'}`);
+      out.push(`FiO₂ used: ${Number.isFinite(FiB.min)?(FiB.min*100).toFixed(0)+'%':'—'}`);
+      if (therapy === 'hfnc') out.push(`HFNC flow: ${Number.isFinite(hfncFlowB) ? hfncFlowB.toFixed(0)+' L/min' : '—'}`);
+      if (Number.isFinite(pf)) out.push(`P/F mid ≈ ${pf.toFixed(0)} mmHg`);
+      out.push('');
+      out.push(acid.text);
+      if (hacor) out.push(`HACOR: ${hacor.total} (higher risk if >5)`);
+      out.push('');
+      out.push('Specific suggestions (WHAT + WHY + CONFIDENCE):');
+      suggestions.forEach((s, i) => {
+        out.push(`${i+1}) ${s.title}`);
+        out.push(`   What: ${s.settings}`);
+        out.push(`   Why: ${s.why}`);
+        out.push(`   Confidence: ${s.confidence}`);
+      });
+      document.getElementById('resultB').textContent = out.join('\n');
+
       renderChips('flagsB', flags);
 
-      // V/Q vs shunt-like heuristic
+      // V/Q vs shunt heuristic (simple)
       const vq = [];
       const vqFlags = [];
-      if ([baselineData.indices.AAGmin, indices.AAGmin].every(Number.isFinite)) {
+      if (Number.isFinite(pf) && pf < 150) vqFlags.push('Very low P/F → shunt-like physiology likely.');
+      if (Number.isFinite(baselineData.indices.AAGmin) && Number.isFinite(indices.AAGmin)) {
         const deltaAA = indices.AAGmin - baselineData.indices.AAGmin;
-        if (deltaAA > 20) vq.push('Rising A–a gradient → shunt-like or V/Q mismatch; optimize EPAP/PEEP and recruitment.');
-        else vq.push('A–a gradient stable → less shunt change; consider ventilation/drive issues.');
+        if (deltaAA > 20) vq.push('Rising A–a gradient → worsening V/Q mismatch/shunt; consider recruitment (EPAP/PEEP) + escalation.');
+        else vq.push('A–a gradient stable → less shunt progression; consider ventilation/drive or device factors.');
+      } else {
+        vq.push('V/Q heuristic needs FiO₂ + PaO₂ + PaCO₂ to estimate A–a and P/F.');
       }
-      if (Number.isFinite(indices.pfLow) && indices.pfLow < 150) vqFlags.push('Very low P/F → shunt-like physiology likely.');
-      if (Number.isFinite(baselineData.PaCO2) && Number.isFinite(PaCO2) && PaCO2 > baselineData.PaCO2) vq.push('Ventilation not improving → raise ΔPinsp, check mask/trigger.');
-      if (!vq.length) vq.push('V/Q heuristic: not enough data (need FiO₂, PaO₂, PaCO₂).');
       document.getElementById('vqB').textContent = vq.join('\n');
       renderChips('chipsB', vqFlags);
 
-      repeatData = { mins, pH, PaCO2, PaO2, HCO3, RR, SpO2, lactate, FiB, indices, acid, hacor, flags, suggestions, therapy: document.getElementById('therapyB').value, settings: document.getElementById('settingsB').value };
+      repeatData = { mins, therapy, pH, PaCO2, PaO2, HCO3, RR, SpO2, lactate, FiB, indices, acid, hacor, flags, suggestions };
       updateSummary();
-      showTab('B');
     }
 
     function updateSummary() {
       if (!baselineData) { document.getElementById('summary').textContent = 'Perform Sections A and B to generate summary.'; return; }
       const sum = [];
       sum.push('Baseline assessment:');
-      sum.push(`Context: ${baselineData.context}. FiO₂ ~ ${(baselineData.FiO2.min * 100).toFixed(0)}–${(baselineData.FiO2.max * 100).toFixed(0)}% (${baselineData.FiO2.info}).`);
-      sum.push(`ABG: pH ${baselineData.pH ?? '—'}, PaCO₂ ${baselineData.PaCO2 ?? '—'}, PaO₂ ${baselineData.PaO2 ?? '—'}, HCO₃ ${baselineData.HCO3 ?? '—'}.`);
-      if (baselineData.indices) sum.push(`P/F ${baselineData.indices.pfLow?.toFixed(0)}–${baselineData.indices.pfHigh?.toFixed(0)}; A–a ${baselineData.indices.AAGmin?.toFixed(0)}–${baselineData.indices.AAGmax?.toFixed(0)}.`);
-      sum.push(`Acid–base: ${baselineData.acid.text.replace(/\n/g, ' | ')}`);
-      sum.push(`Suggested NIV/CPAP start: ${baselineData.nivPlan.join(' | ')}`);
-      if (Number.isFinite(baselineData.height)) sum.push(`Height noted: ${baselineData.height} cm (used to tailor starting PEEP/ΔPinsp).`);
-      if (baselineData.rationale.length) sum.push(`Rationale: ${baselineData.rationale.join(' ')}.`);
+      sum.push(`Context: ${baselineData.ctx}. SpO₂ target: ${baselineData.targetSpO2}.`);
+      sum.push(`FiO₂ estimate: ${Number.isFinite(baselineData.FiO2.min) ? (baselineData.FiO2.min*100).toFixed(0) : '—'}–${Number.isFinite(baselineData.FiO2.max) ? (baselineData.FiO2.max*100).toFixed(0) : '—'}% (${baselineData.FiO2.info}).`);
+      sum.push(`ABG A: pH ${baselineData.pH ?? '—'}, PaCO₂ ${baselineData.PaCO2 ?? '—'}, PaO₂ ${baselineData.PaO2 ?? '—'}, HCO₃ ${baselineData.HCO3 ?? '—'}.`);
+      const pfA = pfMid(baselineData.indices);
+      if (Number.isFinite(pfA)) sum.push(`P/F mid ≈ ${pfA.toFixed(0)}.`);
+      sum.push('');
+      sum.push('Baseline support plan:');
+      baselineData.plan.forEach((p, i) => {
+        sum.push(`${i+1}) ${p.title} — ${p.settings}`);
+        sum.push(`   Why: ${p.why}`);
+        sum.push(`   Confidence: ${p.confidence}`);
+      });
+      sum.push('');
       sum.push(`Baseline flags: ${baselineData.flags.length ? baselineData.flags.join('; ') : 'None'}.`);
+
       if (repeatData) {
         sum.push('');
         sum.push('Repeat ABG & response:');
-        sum.push(`After ${Number.isFinite(repeatData.mins) ? repeatData.mins + ' min' : 'unknown'}, on ${repeatData.therapy}${repeatData.settings ? ' (' + repeatData.settings + ')' : ''}.`);
-        sum.push(`ABG: pH ${repeatData.pH ?? '—'}, PaCO₂ ${repeatData.PaCO2 ?? '—'}, PaO₂ ${repeatData.PaO2 ?? '—'}, HCO₃ ${repeatData.HCO3 ?? '—'}.`);
-        if (repeatData.indices) sum.push(`P/F ${repeatData.indices.pfLow?.toFixed(0)}–${repeatData.indices.pfHigh?.toFixed(0)}; A–a ${repeatData.indices.AAGmin?.toFixed(0)}–${repeatData.indices.AAGmax?.toFixed(0)}.`);
+        sum.push(`After ${Number.isFinite(repeatData.mins)?repeatData.mins+' min':'—'} on ${repeatData.therapy}.`);
+        sum.push(`ABG B: pH ${repeatData.pH ?? '—'}, PaCO₂ ${repeatData.PaCO2 ?? '—'}, PaO₂ ${repeatData.PaO2 ?? '—'}, HCO₃ ${repeatData.HCO3 ?? '—'}.`);
+        const pfB = pfMid(repeatData.indices);
+        if (Number.isFinite(pfB)) sum.push(`P/F mid ≈ ${pfB.toFixed(0)}.`);
         sum.push(`Trend flags: ${repeatData.flags.length ? repeatData.flags.join('; ') : 'None'}.`);
-        sum.push(`Suggested adjustments: ${repeatData.suggestions.join(' | ')}`);
+        sum.push('');
+        sum.push('Recommendations going forwards:');
+        repeatData.suggestions.forEach((s, i) => {
+          sum.push(`${i+1}) ${s.title} (Confidence: ${s.confidence})`);
+          sum.push(`   What: ${s.settings}`);
+          sum.push(`   Why: ${s.why}`);
+        });
       } else {
         sum.push('');
         sum.push('Complete Section B to summarise response and next steps.');
       }
+
       document.getElementById('summary').textContent = sum.join('\n');
     }
 
@@ -848,21 +1063,20 @@
       navigator.clipboard.writeText(document.getElementById('summary').textContent).then(() => alert('Summary copied to clipboard.'));
     }
 
+    // Examples / clear
     function fillExampleA() {
       clearA();
       document.getElementById('contextA').value = 'copd';
+      document.getElementById('targetSpO2').value = '88-92';
       document.getElementById('deviceA').value = 'nc';
+      handleDeviceChangeA();
       document.getElementById('flowFiO2A').value = 2;
-      document.getElementById('heightA').value = 165;
       document.getElementById('pH_A').value = 7.28;
       document.getElementById('PaCO2_A').value = 68;
       document.getElementById('PaO2_A').value = 55;
       document.getElementById('HCO3_A').value = 28;
       document.getElementById('RR_A').value = 28;
       document.getElementById('SpO2_A').value = 88;
-      document.getElementById('Na_A').value = 140;
-      document.getElementById('Cl_A').value = 100;
-      document.getElementById('Alb_A').value = 4;
       document.getElementById('Lac_A').value = 1.2;
       document.getElementById('HR_A').value = 110;
       document.getElementById('GCS_A').value = 15;
@@ -872,6 +1086,7 @@
       clearB();
       document.getElementById('minsB').value = 60;
       document.getElementById('therapyB').value = 'niv';
+      handleTherapyChangeB();
       document.getElementById('settingsB').value = 'IPAP 14 / EPAP 5';
       document.getElementById('FiO2_B').value = 28;
       document.getElementById('pH_B').value = 7.32;
@@ -886,18 +1101,24 @@
     }
 
     function clearA() {
-      ['pH_A','PaCO2_A','PaO2_A','HCO3_A','RR_A','SpO2_A','flowFiO2A','noteA','Na_A','Cl_A','Alb_A','Lac_A','HR_A','GCS_A','heightA'].forEach(id => document.getElementById(id).value = '');
+      ['pH_A','PaCO2_A','PaO2_A','HCO3_A','RR_A','SpO2_A','flowFiO2A','noteA','Na_A','Cl_A','Alb_A','Lac_A','HR_A','GCS_A','heightA','hfncFlowA'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
       document.getElementById('resultA').textContent = 'Enter Section A and click “Analyse A”.';
-      document.getElementById('nivA').textContent = 'Will populate with suggested starting ranges and rationale.';
+      document.getElementById('supportA').textContent = 'Will populate with: WHAT + WHY + CONFIDENCE.';
       document.getElementById('indicesA').innerHTML = '';
       document.getElementById('flagsA').innerHTML = '';
-      document.getElementById('chipsA').innerHTML = '';
+      document.getElementById('supportChipsA').innerHTML = '';
       baselineData = null;
       updateSummary();
     }
 
     function clearB() {
-      ['minsB','pH_B','PaCO2_B','PaO2_B','HCO3_B','RR_B','SpO2_B','FiO2_B','settingsB','Lac_B','HR_B','GCS_B'].forEach(id => document.getElementById(id).value = '');
+      ['minsB','pH_B','PaCO2_B','PaO2_B','HCO3_B','RR_B','SpO2_B','FiO2_B','settingsB','Lac_B','HR_B','GCS_B','hfncFlowB'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
       document.getElementById('resultB').textContent = 'Complete Section A first. Enter repeat ABG and click “Analyse B”.';
       document.getElementById('flagsB').innerHTML = '';
       document.getElementById('chipsB').innerHTML = '';
@@ -905,6 +1126,10 @@
       repeatData = null;
       updateSummary();
     }
+
+    // Initialize toggles
+    handleDeviceChangeA();
+    handleTherapyChangeB();
   </script>
 </body>
 </html>
